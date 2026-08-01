@@ -462,7 +462,7 @@ class RolesData {
 }
 
 // ============================================================================
-// 5. GAME STATE CONTROLLER (COMPREHENSIVE ROLE INTERACTIONS)
+// 5. GAME STATE CONTROLLER
 // ============================================================================
 class GameController extends ChangeNotifier {
   List<PlayerModel> _players = [];
@@ -497,6 +497,11 @@ class GameController extends ChangeNotifier {
   List<RoleModel> get activeNightRoles => _activeNightRoles;
 
   RoleModel get currentNightRole => _activeNightRoles[_currentNightStepIndex];
+
+  List<PlayerModel> get currentNightPlayers {
+    final role = currentNightRole;
+    return alivePlayers.where((p) => p.role.id == role.id || (role.team == Team.werewolves && p.role.team == Team.werewolves)).toList();
+  }
 
   void setupGame(List<String> playerNames, List<RoleModel> chosenRoles) {
     _selectedRoles = List.from(chosenRoles);
@@ -600,7 +605,6 @@ class GameController extends ChangeNotifier {
     _morningEvents.clear();
     List<PlayerModel> killedTonight = [];
 
-    // 1. Doctor vs Werewolf attack
     if (wolfTarget != null && wolfTarget!.isTargetedByWolves) {
       if (wolfTarget!.isProtected) {
         _morningEvents.add('🛡️ نجح الطبيب/الحارس في حماية أحد القرويين من هجوم المستذئبين!');
@@ -615,7 +619,6 @@ class GameController extends ChangeNotifier {
       }
     }
 
-    // 2. Doctor vs Serial Killer attack
     if (serialKillerTarget != null && serialKillerTarget!.isTargetedBySerialKiller) {
       if (serialKillerTarget!.isProtected) {
         _morningEvents.add('🛡️ نجح الحارس في التصدي لهجوم القاتل المتسلسل!');
@@ -626,14 +629,12 @@ class GameController extends ChangeNotifier {
       }
     }
 
-    // 3. Witch Poison Attack
     if (witchPoisonTarget != null && witchPoisonTarget!.isTargetedByWitchPoison) {
       if (!killedTonight.contains(witchPoisonTarget)) {
         killedTonight.add(witchPoisonTarget!);
       }
     }
 
-    // Apply casualties and lovers heartbreak
     for (var victim in killedTonight) {
       victim.isAlive = false;
       _morningEvents.add('❌ للأسف، قُتل اللاعب [${victim.name}] (${victim.role.name}) خلال الليل!');
@@ -654,7 +655,7 @@ class GameController extends ChangeNotifier {
       _morningEvents.add('✨ صباح آمن ومشرق! لم يمت أي لاعب خلال هذه الليلة.');
     }
 
-    wolfCubRevengeActive = false; // Reset wolf cub revenge after night
+    wolfCubRevengeActive = false;
     checkWinConditions();
     notifyListeners();
   }
@@ -664,7 +665,6 @@ class GameController extends ChangeNotifier {
     _morningEvents.clear();
     _morningEvents.add('⚖️ قرر القرويون إعدام [${suspect.name}] وكانت هويته الحقيقية: (${suspect.role.name} ${suspect.role.icon}).');
 
-    // Rule: If Fool is executed -> Fool wins instantly
     if (suspect.role.id == RolesData.fool.id) {
       _isGameOver = true;
       _winnerTeamMessage = '🤡 فاز الجوكر (المجنون) باللعبة! نجح بإقناع القرويين بإعدامه!';
@@ -672,13 +672,11 @@ class GameController extends ChangeNotifier {
       return;
     }
 
-    // Rule: If Wolf Cub is executed -> Werewolves get revenge double kill next night
     if (suspect.role.id == RolesData.wolfCub.id) {
       wolfCubRevengeActive = true;
       _morningEvents.add('🐾 غضب قطيع المستذئبين لمقتل الذئب الصغير! سينتقمون بأخذ ضحيتين الليلة القادمة.');
     }
 
-    // Rule: Lovers Heartbreak
     if (suspect.isLinkedByCupid) {
       var partner = _players.firstWhere(
         (p) => p.isLinkedByCupid && p.id != suspect.id && p.isAlive,
@@ -1106,7 +1104,7 @@ class _RoleRevealPageState extends State<RoleRevealPage> {
 }
 
 // ============================================================================
-// 8. NIGHT PHASE PAGE (SMART ROLE INTERACTION UI)
+// 8. NIGHT PHASE PAGE (SECRET PLAYER-NAME BASED NIGHT TURNS)
 // ============================================================================
 class NightPhasePage extends StatefulWidget {
   const NightPhasePage({super.key});
@@ -1162,7 +1160,6 @@ class _NightPhasePageState extends State<NightPhasePage> {
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        // Alpha wolf shows as Villager to Seer!
         final isWolf = target.role.team == Team.werewolves && target.role.id != RolesData.alphaWolf.id;
         return AlertDialog(
           backgroundColor: AppColors.darkSurface,
@@ -1246,10 +1243,14 @@ class _NightPhasePageState extends State<NightPhasePage> {
     final controller = context.watch<GameController>();
     final role = controller.currentNightRole;
     final alivePlayers = controller.alivePlayers;
+    final currentTurnPlayers = controller.currentNightPlayers;
+
+    // Display Player Names secretly instead of public role title!
+    final playerNamesString = currentTurnPlayers.map((p) => p.name).join(' و ');
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('حلول الليل 🌙 (${controller.currentNightStepIndex + 1}/${controller.activeNightRoles.length})'),
+        title: Text('مرحلة الليل 🌙 (${controller.currentNightStepIndex + 1}/${controller.activeNightRoles.length})'),
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
@@ -1257,18 +1258,19 @@ class _NightPhasePageState extends State<NightPhasePage> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           child: Column(
             children: [
+              // Privacy Header Card showing Player Name secretly
               GlassCard(
                 padding: const EdgeInsets.all(14),
                 child: Row(
                   children: [
-                    Text(role.icon, style: const TextStyle(fontSize: 40)),
-                    const SizedBox(width: 14),
+                    const Icon(Icons.person_pin_rounded, size: 36, color: Colors.amber),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('دور: ${role.name}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: role.color)),
-                          const SizedBox(height: 2),
+                          Text('مرّر الهاتف إلى: [$playerNamesString] 📲', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.amber)),
+                          const SizedBox(height: 4),
                           Text(role.nightActionPrompt, style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryDark)),
                         ],
                       ),
@@ -1316,18 +1318,18 @@ class _NightPhasePageState extends State<NightPhasePage> {
                     final isSecondSelected = _secondSelectedTarget?.id == player.id;
 
                     return Card(
-                      color: isSelected || isSecondSelected ? role.color.withValues(alpha: 0.25) : AppColors.darkSurface,
+                      color: isSelected || isSecondSelected ? AppColors.primary.withValues(alpha: 0.3) : AppColors.darkSurface,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
-                        side: BorderSide(color: isSelected || isSecondSelected ? role.color : Colors.white10),
+                        side: BorderSide(color: isSelected || isSecondSelected ? AppColors.primary : Colors.white10),
                       ),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: role.color.withValues(alpha: 0.2),
+                          backgroundColor: AppColors.primary.withValues(alpha: 0.2),
                           child: Text('${index + 1}', style: const TextStyle(color: Colors.white)),
                         ),
                         title: Text(player.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        trailing: isSelected || isSecondSelected ? Icon(Icons.check_circle_rounded, color: role.color) : null,
+                        trailing: isSelected || isSecondSelected ? const Icon(Icons.check_circle_rounded, color: AppColors.primary) : null,
                         onTap: () {
                           setState(() {
                             if (role.id == RolesData.cupid.id || (role.team == Team.werewolves && controller.wolfCubRevengeActive)) {
