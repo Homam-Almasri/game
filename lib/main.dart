@@ -276,6 +276,7 @@ class PlayerModel {
   bool isTargetedByWolves;
   bool isTargetedBySerialKiller;
   bool isTargetedByWitchPoison;
+  bool isHealedByWitch;
   bool isLinkedByCupid;
   bool isMayor;
 
@@ -288,6 +289,7 @@ class PlayerModel {
     this.isTargetedByWolves = false,
     this.isTargetedBySerialKiller = false,
     this.isTargetedByWitchPoison = false,
+    this.isHealedByWitch = false,
     this.isLinkedByCupid = false,
     this.isMayor = false,
   });
@@ -297,6 +299,7 @@ class PlayerModel {
     isTargetedByWolves = false;
     isTargetedBySerialKiller = false;
     isTargetedByWitchPoison = false;
+    isHealedByWitch = false;
   }
 }
 
@@ -318,7 +321,7 @@ class RolesData {
     icon: '🔮',
     team: Team.villagers,
     description: 'تستيقظ كل ليلة وتختار لاعباً لتكشف هويته السرية (هل هو ذئب أم بريء).',
-    nightActionPrompt: 'اختر لاعباً لكشف هويته السرية:',
+    nightActionPrompt: 'اختر لاعباً لكشف انتمائه السري:',
     nightPriority: 2,
     color: Color(0xFF8B5CF6),
   );
@@ -339,8 +342,8 @@ class RolesData {
     name: 'الساحرة',
     icon: '🧪',
     team: Team.villagers,
-    description: 'تملك جرعة شفاء واحدة لإنقاذ ضحية الليل، وجرعة سم واحدة لقتل أي لاعب.',
-    nightActionPrompt: 'اختر إجراء الساحرة لهذه الليلة:',
+    description: 'تملك جرعة شفاء واحدة لإنقاذ أي لاعب، وجرعة سم واحدة لقتل أي لاعب.',
+    nightActionPrompt: 'اختر اللاعب والجروع المراد استخدامها:',
     nightPriority: 4,
     color: Color(0xFFA855F7),
   );
@@ -484,7 +487,7 @@ class GameController extends ChangeNotifier {
   PlayerModel? wolfSecondTarget;
   PlayerModel? serialKillerTarget;
   PlayerModel? witchPoisonTarget;
-  bool witchUsedHealTonight = false;
+  PlayerModel? witchHealTarget;
   PlayerModel? seerCheckedPlayer;
 
   List<PlayerModel> get players => _players;
@@ -535,7 +538,7 @@ class GameController extends ChangeNotifier {
     wolfSecondTarget = null;
     serialKillerTarget = null;
     witchPoisonTarget = null;
-    witchUsedHealTonight = false;
+    witchHealTarget = null;
     seerCheckedPlayer = null;
 
     for (var p in _players) {
@@ -587,12 +590,10 @@ class GameController extends ChangeNotifier {
     witchHasPoisonPotion = false;
   }
 
-  void useWitchHeal() {
-    if (wolfTarget != null) {
-      wolfTarget!.isTargetedByWolves = false;
-      witchUsedHealTonight = true;
-      witchHasHealPotion = false;
-    }
+  void setWitchHealTarget(PlayerModel target) {
+    witchHealTarget = target;
+    target.isHealedByWitch = true;
+    witchHasHealPotion = false;
   }
 
   void linkLovers(PlayerModel p1, PlayerModel p2) {
@@ -606,22 +607,22 @@ class GameController extends ChangeNotifier {
     List<PlayerModel> killedTonight = [];
 
     if (wolfTarget != null && wolfTarget!.isTargetedByWolves) {
-      if (wolfTarget!.isProtected) {
-        _morningEvents.add('🛡️ نجح الطبيب/الحارس في حماية أحد القرويين من هجوم المستذئبين!');
+      if (wolfTarget!.isProtected || wolfTarget!.isHealedByWitch) {
+        _morningEvents.add('🛡️ نجحت حماية الطبيب أو علاج الساحرة في إنقاذ ضحية المستذئبين!');
       } else {
         killedTonight.add(wolfTarget!);
       }
     }
 
     if (wolfSecondTarget != null && wolfSecondTarget!.isTargetedByWolves) {
-      if (!wolfSecondTarget!.isProtected && !killedTonight.contains(wolfSecondTarget)) {
+      if (!wolfSecondTarget!.isProtected && !wolfSecondTarget!.isHealedByWitch && !killedTonight.contains(wolfSecondTarget)) {
         killedTonight.add(wolfSecondTarget!);
       }
     }
 
     if (serialKillerTarget != null && serialKillerTarget!.isTargetedBySerialKiller) {
-      if (serialKillerTarget!.isProtected) {
-        _morningEvents.add('🛡️ نجح الحارس في التصدي لهجوم القاتل المتسلسل!');
+      if (serialKillerTarget!.isProtected || serialKillerTarget!.isHealedByWitch) {
+        _morningEvents.add('🛡️ نجحت حماية الطبيب/الساحرة في صّد هجوم القاتل المتسلسل!');
       } else {
         if (!killedTonight.contains(serialKillerTarget)) {
           killedTonight.add(serialKillerTarget!);
@@ -1104,7 +1105,7 @@ class _RoleRevealPageState extends State<RoleRevealPage> {
 }
 
 // ============================================================================
-// 8. NIGHT PHASE PAGE (SECRET PLAYER-NAME BASED NIGHT TURNS)
+// 8. NIGHT PHASE PAGE (PRIVATE SEER POPUP & ANY-PLAYER WITCH POTIONS)
 // ============================================================================
 class NightPhasePage extends StatefulWidget {
   const NightPhasePage({super.key});
@@ -1116,6 +1117,8 @@ class NightPhasePage extends StatefulWidget {
 class _NightPhasePageState extends State<NightPhasePage> {
   PlayerModel? _selectedTarget;
   PlayerModel? _secondSelectedTarget;
+  bool _witchUseHeal = false;
+  bool _witchUsePoison = false;
 
   void _onConfirmAction(GameController controller) {
     final role = controller.currentNightRole;
@@ -1127,11 +1130,18 @@ class _NightPhasePageState extends State<NightPhasePage> {
     } else if (role.id == RolesData.serialKiller.id && _selectedTarget != null) {
       controller.setSerialKillerTarget(_selectedTarget!);
     } else if (role.id == RolesData.seer.id && _selectedTarget != null) {
-      _showSeerDialog(context, _selectedTarget!);
+      _showPrivateSeerDialog(context, _selectedTarget!);
       return;
     } else if (role.id == RolesData.wolfSeer.id && _selectedTarget != null) {
-      _showWolfSeerDialog(context, _selectedTarget!);
+      _showPrivateWolfSeerDialog(context, _selectedTarget!);
       return;
+    } else if (role.id == RolesData.witch.id) {
+      if (_witchUseHeal && _selectedTarget != null) {
+        controller.setWitchHealTarget(_selectedTarget!);
+      }
+      if (_witchUsePoison && _secondSelectedTarget != null) {
+        controller.setWitchPoisonTarget(_secondSelectedTarget!);
+      }
     } else if (role.id == RolesData.cupid.id && _selectedTarget != null && _secondSelectedTarget != null) {
       controller.linkLovers(_selectedTarget!, _secondSelectedTarget!);
     }
@@ -1143,6 +1153,8 @@ class _NightPhasePageState extends State<NightPhasePage> {
     setState(() {
       _selectedTarget = null;
       _secondSelectedTarget = null;
+      _witchUseHeal = false;
+      _witchUsePoison = false;
     });
 
     bool hasNext = controller.nextNightStep();
@@ -1155,84 +1167,121 @@ class _NightPhasePageState extends State<NightPhasePage> {
     }
   }
 
-  void _showSeerDialog(BuildContext context, PlayerModel target) {
+  void _showPrivateSeerDialog(BuildContext context, PlayerModel target) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
+        bool isRevealed = false;
         final isWolf = target.role.team == Team.werewolves && target.role.id != RolesData.alphaWolf.id;
-        return AlertDialog(
-          backgroundColor: AppColors.darkSurface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('نتيجة كشف العرّاف 🔮', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('اللاعب [${target.name}] ينتمي إلى:'),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isWolf ? Colors.red.withValues(alpha: 0.2) : Colors.green.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  isWolf ? 'فريق المستذئبين/الشر 🐺' : 'فريق القرويين/الخير 🛡️',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: isWolf ? Colors.red : Colors.green),
-                ),
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppColors.darkSurface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Text('كشف العرّاف السرّي 🔮', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!isRevealed) ...[
+                    const Icon(Icons.visibility_off, size: 50, color: AppColors.secondary),
+                    const SizedBox(height: 12),
+                    const Text('تأكد أنك بمفردك تنظر للشاشة كعرّاف!', textAlign: TextAlign.center),
+                    const SizedBox(height: 14),
+                    ElevatedButton(
+                      onPressed: () => setDialogState(() => isRevealed = true),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                      child: const Text('اضغط هنا لرؤية النتيجة 👁️', style: TextStyle(color: Colors.white)),
+                    ),
+                  ] else ...[
+                    Text('اللاعب [${target.name}] ينتمي إلى:'),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isWolf ? Colors.red.withValues(alpha: 0.2) : Colors.green.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        isWolf ? 'فريق المستذئبين / الشر 🐺' : 'فريق القرويين / الخير 🛡️',
+                        style: TextStyle(fontWeight: FontWeight.bold, color: isWolf ? Colors.red : Colors.green, fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _advanceTurn(context.read<GameController>());
-              },
-              child: const Text('فهمت وإغلاق'),
-            ),
-          ],
+              actions: [
+                if (isRevealed)
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _advanceTurn(context.read<GameController>());
+                    },
+                    child: const Text('إخفاء ومتابعة 📲'),
+                  ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
-  void _showWolfSeerDialog(BuildContext context, PlayerModel target) {
+  void _showPrivateWolfSeerDialog(BuildContext context, PlayerModel target) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppColors.darkSurface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('كشف الذئب الجاسوس 👁️', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('الدور الحقيقي للاعب [${target.name}] هو:'),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                decoration: BoxDecoration(
-                  color: target.role.color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${target.role.icon} ${target.role.name}',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: target.role.color, fontSize: 18),
-                ),
+        bool isRevealed = false;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppColors.darkSurface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Text('كشف الذئب الجاسوس 👁️', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!isRevealed) ...[
+                    const Icon(Icons.security, size: 50, color: Colors.red),
+                    const SizedBox(height: 12),
+                    const Text('تأكد من سرية الشاشة قبل الكشف!', textAlign: TextAlign.center),
+                    const SizedBox(height: 14),
+                    ElevatedButton(
+                      onPressed: () => setDialogState(() => isRevealed = true),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      child: const Text('اضغط لرؤية دور اللاعب 👁️', style: TextStyle(color: Colors.white)),
+                    ),
+                  ] else ...[
+                    Text('الدور الحقيقي للاعب [${target.name}] هو:'),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: target.role.color.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${target.role.icon} ${target.role.name}',
+                        style: TextStyle(fontWeight: FontWeight.bold, color: target.role.color, fontSize: 18),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _advanceTurn(context.read<GameController>());
-              },
-              child: const Text('فهمت وإغلاق'),
-            ),
-          ],
+              actions: [
+                if (isRevealed)
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _advanceTurn(context.read<GameController>());
+                    },
+                    child: const Text('إخفاء ومتابعة 📲'),
+                  ),
+              ],
+            );
+          },
         );
       },
     );
@@ -1245,7 +1294,6 @@ class _NightPhasePageState extends State<NightPhasePage> {
     final alivePlayers = controller.alivePlayers;
     final currentTurnPlayers = controller.currentNightPlayers;
 
-    // Display Player Names secretly instead of public role title!
     final playerNamesString = currentTurnPlayers.map((p) => p.name).join(' و ');
 
     return Scaffold(
@@ -1258,7 +1306,6 @@ class _NightPhasePageState extends State<NightPhasePage> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           child: Column(
             children: [
-              // Privacy Header Card showing Player Name secretly
               GlassCard(
                 padding: const EdgeInsets.all(14),
                 child: Row(
@@ -1279,36 +1326,44 @@ class _NightPhasePageState extends State<NightPhasePage> {
                 ),
               ),
               const SizedBox(height: 12),
+
+              // Witch Controls (Flexible potioned selection on ANY player)
               if (role.id == RolesData.witch.id) ...[
                 GlassCard(
                   padding: const EdgeInsets.all(12),
-                  child: Column(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      if (controller.wolfTarget != null)
-                        Text('ضحية المستذئبين الليلة هي: [${controller.wolfTarget!.name}]', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.amber)),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: controller.witchHasHealPotion && controller.wolfTarget != null
-                                ? () {
-                                    controller.useWitchHeal();
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم استخدام جرعة الشفاء لإنقاذ الضحية!')));
-                                    setState(() {});
-                                  }
-                                : null,
-                            icon: const Icon(Icons.favorite, size: 18),
-                            label: const Text('جرعة الشفاء 🧪'),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                          ),
-                        ],
+                      FilterChip(
+                        selected: _witchUseHeal,
+                        disabledColor: Colors.grey.withValues(alpha: 0.2),
+                        selectedColor: Colors.green.withValues(alpha: 0.3),
+                        label: Text(controller.witchHasHealPotion ? 'استخدام جرعة الشفاء 🧪' : 'تم استهلاك الشفاء ❌'),
+                        onSelected: controller.witchHasHealPotion
+                            ? (val) => setState(() {
+                                  _witchUseHeal = val;
+                                  if (!val) _selectedTarget = null;
+                                })
+                            : null,
+                      ),
+                      FilterChip(
+                        selected: _witchUsePoison,
+                        disabledColor: Colors.grey.withValues(alpha: 0.2),
+                        selectedColor: Colors.purple.withValues(alpha: 0.3),
+                        label: Text(controller.witchHasPoisonPotion ? 'استخدام جرعة السم ☠️' : 'تم استهلاك السم ❌'),
+                        onSelected: controller.witchHasPoisonPotion
+                            ? (val) => setState(() {
+                                  _witchUsePoison = val;
+                                  if (!val) _secondSelectedTarget = null;
+                                })
+                            : null,
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 12),
               ],
+
               Expanded(
                 child: ListView.builder(
                   itemCount: alivePlayers.length,
@@ -1329,10 +1384,29 @@ class _NightPhasePageState extends State<NightPhasePage> {
                           child: Text('${index + 1}', style: const TextStyle(color: Colors.white)),
                         ),
                         title: Text(player.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: role.id == RolesData.witch.id
+                            ? Text(
+                                isSelected ? 'هدف الشفاء 🧪' : isSecondSelected ? 'هدف السم ☠️' : 'اضغط للتحديد',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isSelected ? Colors.green : isSecondSelected ? Colors.purpleAccent : Colors.grey,
+                                ),
+                              )
+                            : null,
                         trailing: isSelected || isSecondSelected ? const Icon(Icons.check_circle_rounded, color: AppColors.primary) : null,
                         onTap: () {
                           setState(() {
-                            if (role.id == RolesData.cupid.id || (role.team == Team.werewolves && controller.wolfCubRevengeActive)) {
+                            if (role.id == RolesData.witch.id) {
+                              if (_witchUseHeal && _selectedTarget == null) {
+                                _selectedTarget = player;
+                              } else if (_witchUsePoison && _secondSelectedTarget == null) {
+                                _secondSelectedTarget = player;
+                              } else if (_witchUseHeal && _selectedTarget?.id == player.id) {
+                                _selectedTarget = null;
+                              } else if (_witchUsePoison && _secondSelectedTarget?.id == player.id) {
+                                _secondSelectedTarget = null;
+                              }
+                            } else if (role.id == RolesData.cupid.id || (role.team == Team.werewolves && controller.wolfCubRevengeActive)) {
                               if (_selectedTarget == null) {
                                 _selectedTarget = player;
                               } else if (_secondSelectedTarget == null && player.id != _selectedTarget!.id) {
@@ -1353,7 +1427,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
               ),
               const SizedBox(height: 12),
               CustomButton(
-                text: _selectedTarget != null ? 'تأكيد القرار والتحويل 📲' : 'تخطي / لا يوجد حركة',
+                text: (_selectedTarget != null || _secondSelectedTarget != null) ? 'تأكيد القرار والتحويل 📲' : 'تخطي / لا يوجد حركة',
                 onPressed: () => _onConfirmAction(controller),
               ),
             ],
