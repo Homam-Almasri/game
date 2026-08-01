@@ -383,7 +383,7 @@ class RolesData {
     name: 'الذئب الألفا / الزعيم',
     icon: '👑',
     team: Team.werewolves,
-    description: 'قائد الذئاب، صوته حاسم ليلاً وفي بعض الأوقات يظهر كقروي عند فحص العراف.',
+    description: 'قائد الذئاب، صوته حاسم ليلاً ويظهر كقروي بريء عند فحص العراف.',
     nightActionPrompt: 'اقد قطيع الذئاب واختر الضحية:',
     nightPriority: 3,
     color: Color(0xFFB91C1C),
@@ -462,7 +462,7 @@ class RolesData {
 }
 
 // ============================================================================
-// 5. GAME STATE CONTROLLER
+// 5. GAME STATE CONTROLLER (COMPREHENSIVE ROLE INTERACTIONS)
 // ============================================================================
 class GameController extends ChangeNotifier {
   List<PlayerModel> _players = [];
@@ -477,9 +477,11 @@ class GameController extends ChangeNotifier {
   bool witchHasHealPotion = true;
   bool witchHasPoisonPotion = true;
   bool cupidActionDone = false;
+  bool wolfCubRevengeActive = false;
 
   PlayerModel? doctorTarget;
   PlayerModel? wolfTarget;
+  PlayerModel? wolfSecondTarget;
   PlayerModel? serialKillerTarget;
   PlayerModel? witchPoisonTarget;
   bool witchUsedHealTonight = false;
@@ -505,6 +507,7 @@ class GameController extends ChangeNotifier {
     witchHasHealPotion = true;
     witchHasPoisonPotion = true;
     cupidActionDone = false;
+    wolfCubRevengeActive = false;
 
     List<RoleModel> shuffledRoles = List.from(_selectedRoles)..shuffle(Random());
 
@@ -524,6 +527,7 @@ class GameController extends ChangeNotifier {
     _currentNightStepIndex = 0;
     doctorTarget = null;
     wolfTarget = null;
+    wolfSecondTarget = null;
     serialKillerTarget = null;
     witchPoisonTarget = null;
     witchUsedHealTonight = false;
@@ -558,9 +562,13 @@ class GameController extends ChangeNotifier {
     target.isProtected = true;
   }
 
-  void setWolfTarget(PlayerModel target) {
+  void setWolfTarget(PlayerModel target, {PlayerModel? secondTarget}) {
     wolfTarget = target;
     target.isTargetedByWolves = true;
+    if (secondTarget != null) {
+      wolfSecondTarget = secondTarget;
+      secondTarget.isTargetedByWolves = true;
+    }
   }
 
   void setSerialKillerTarget(PlayerModel target) {
@@ -592,25 +600,43 @@ class GameController extends ChangeNotifier {
     _morningEvents.clear();
     List<PlayerModel> killedTonight = [];
 
-    if (wolfTarget != null && wolfTarget!.isTargetedByWolves && !wolfTarget!.isProtected) {
-      killedTonight.add(wolfTarget!);
-    }
-
-    if (serialKillerTarget != null && serialKillerTarget!.isTargetedBySerialKiller && !serialKillerTarget!.isProtected) {
-      if (!killedTonight.contains(serialKillerTarget)) {
-        killedTonight.add(serialKillerTarget!);
+    // 1. Doctor vs Werewolf attack
+    if (wolfTarget != null && wolfTarget!.isTargetedByWolves) {
+      if (wolfTarget!.isProtected) {
+        _morningEvents.add('🛡️ نجح الطبيب/الحارس في حماية أحد القرويين من هجوم المستذئبين!');
+      } else {
+        killedTonight.add(wolfTarget!);
       }
     }
 
+    if (wolfSecondTarget != null && wolfSecondTarget!.isTargetedByWolves) {
+      if (!wolfSecondTarget!.isProtected && !killedTonight.contains(wolfSecondTarget)) {
+        killedTonight.add(wolfSecondTarget!);
+      }
+    }
+
+    // 2. Doctor vs Serial Killer attack
+    if (serialKillerTarget != null && serialKillerTarget!.isTargetedBySerialKiller) {
+      if (serialKillerTarget!.isProtected) {
+        _morningEvents.add('🛡️ نجح الحارس في التصدي لهجوم القاتل المتسلسل!');
+      } else {
+        if (!killedTonight.contains(serialKillerTarget)) {
+          killedTonight.add(serialKillerTarget!);
+        }
+      }
+    }
+
+    // 3. Witch Poison Attack
     if (witchPoisonTarget != null && witchPoisonTarget!.isTargetedByWitchPoison) {
       if (!killedTonight.contains(witchPoisonTarget)) {
         killedTonight.add(witchPoisonTarget!);
       }
     }
 
+    // Apply casualties and lovers heartbreak
     for (var victim in killedTonight) {
       victim.isAlive = false;
-      _morningEvents.add('❌ للأسف، قُتل اللاعب [${victim.name}] خلال الليل!');
+      _morningEvents.add('❌ للأسف، قُتل اللاعب [${victim.name}] (${victim.role.name}) خلال الليل!');
 
       if (victim.isLinkedByCupid) {
         var partner = _players.firstWhere(
@@ -619,15 +645,16 @@ class GameController extends ChangeNotifier {
         );
         if (partner.id != victim.id && partner.isAlive) {
           partner.isAlive = false;
-          _morningEvents.add('💔 قُتل اللاعب [${partner.name}] حزناً على مقتل شريكه الحبيب!');
+          _morningEvents.add('💔 قُتل اللاعب [${partner.name}] فوراً حزناً على مقتل شريكه الحبيب!');
         }
       }
     }
 
-    if (killedTonight.isEmpty) {
-      _morningEvents.add('✨ صباح آمن! لم يمت أي لاعب خلال هذه الليلة.');
+    if (killedTonight.isEmpty && _morningEvents.isEmpty) {
+      _morningEvents.add('✨ صباح آمن ومشرق! لم يمت أي لاعب خلال هذه الليلة.');
     }
 
+    wolfCubRevengeActive = false; // Reset wolf cub revenge after night
     checkWinConditions();
     notifyListeners();
   }
@@ -635,15 +662,23 @@ class GameController extends ChangeNotifier {
   void executePlayer(PlayerModel suspect) {
     suspect.isAlive = false;
     _morningEvents.clear();
-    _morningEvents.add('⚖️ قرر القرويون إعدام [${suspect.name}] وكانت هويته: (${suspect.role.name} ${suspect.role.icon}).');
+    _morningEvents.add('⚖️ قرر القرويون إعدام [${suspect.name}] وكانت هويته الحقيقية: (${suspect.role.name} ${suspect.role.icon}).');
 
+    // Rule: If Fool is executed -> Fool wins instantly
     if (suspect.role.id == RolesData.fool.id) {
       _isGameOver = true;
-      _winnerTeamMessage = '🤡 فاز الجوكر (المجنون) باللعبة! نجح بإقناعكم بإعدامه!';
+      _winnerTeamMessage = '🤡 فاز الجوكر (المجنون) باللعبة! نجح بإقناع القرويين بإعدامه!';
       notifyListeners();
       return;
     }
 
+    // Rule: If Wolf Cub is executed -> Werewolves get revenge double kill next night
+    if (suspect.role.id == RolesData.wolfCub.id) {
+      wolfCubRevengeActive = true;
+      _morningEvents.add('🐾 غضب قطيع المستذئبين لمقتل الذئب الصغير! سينتقمون بأخذ ضحيتين الليلة القادمة.');
+    }
+
+    // Rule: Lovers Heartbreak
     if (suspect.isLinkedByCupid) {
       var partner = _players.firstWhere(
         (p) => p.isLinkedByCupid && p.id != suspect.id && p.isAlive,
@@ -673,7 +708,7 @@ class GameController extends ChangeNotifier {
 
     if (alivePlayers.length == 2 && alivePlayers.every((p) => p.isLinkedByCupid)) {
       _isGameOver = true;
-      _winnerTeamMessage = '💘 فاز العاشقان باللعبة ونجحا في البقاء معاً!';
+      _winnerTeamMessage = '💘 فاز العاشقان باللعبة ونجحا في البقاء معاً حتى النهاية!';
       return;
     }
 
@@ -692,7 +727,7 @@ class GameController extends ChangeNotifier {
 }
 
 // ============================================================================
-// 6. PLAYER SETUP PAGE (SAFE & MULTI-ROLE COUNTER)
+// 6. PLAYER SETUP PAGE
 // ============================================================================
 class PlayerSetupPage extends StatefulWidget {
   const PlayerSetupPage({super.key});
@@ -846,7 +881,7 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('قائمة اللاعبين (${_playerNames.length})', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    Text('الأدوار المحددة: ${_selectedRoles.length}', style: const TextStyle(fontSize: 14, color: AppColors.secondary)),
+                    Text('الأدوار: ${_selectedRoles.length}', style: const TextStyle(fontSize: 14, color: AppColors.secondary)),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -1071,7 +1106,7 @@ class _RoleRevealPageState extends State<RoleRevealPage> {
 }
 
 // ============================================================================
-// 8. NIGHT PHASE PAGE
+// 8. NIGHT PHASE PAGE (SMART ROLE INTERACTION UI)
 // ============================================================================
 class NightPhasePage extends StatefulWidget {
   const NightPhasePage({super.key});
@@ -1090,11 +1125,14 @@ class _NightPhasePageState extends State<NightPhasePage> {
     if (role.id == RolesData.doctor.id && _selectedTarget != null) {
       controller.setDoctorTarget(_selectedTarget!);
     } else if ((role.id == RolesData.werewolf.id || role.id == RolesData.alphaWolf.id) && _selectedTarget != null) {
-      controller.setWolfTarget(_selectedTarget!);
+      controller.setWolfTarget(_selectedTarget!, secondTarget: _secondSelectedTarget);
     } else if (role.id == RolesData.serialKiller.id && _selectedTarget != null) {
       controller.setSerialKillerTarget(_selectedTarget!);
     } else if (role.id == RolesData.seer.id && _selectedTarget != null) {
       _showSeerDialog(context, _selectedTarget!);
+      return;
+    } else if (role.id == RolesData.wolfSeer.id && _selectedTarget != null) {
+      _showWolfSeerDialog(context, _selectedTarget!);
       return;
     } else if (role.id == RolesData.cupid.id && _selectedTarget != null && _secondSelectedTarget != null) {
       controller.linkLovers(_selectedTarget!, _secondSelectedTarget!);
@@ -1124,7 +1162,8 @@ class _NightPhasePageState extends State<NightPhasePage> {
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        final isWolf = target.role.team == Team.werewolves;
+        // Alpha wolf shows as Villager to Seer!
+        final isWolf = target.role.team == Team.werewolves && target.role.id != RolesData.alphaWolf.id;
         return AlertDialog(
           backgroundColor: AppColors.darkSurface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -1143,6 +1182,47 @@ class _NightPhasePageState extends State<NightPhasePage> {
                 child: Text(
                   isWolf ? 'فريق المستذئبين/الشر 🐺' : 'فريق القرويين/الخير 🛡️',
                   style: TextStyle(fontWeight: FontWeight.bold, color: isWolf ? Colors.red : Colors.green),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _advanceTurn(context.read<GameController>());
+              },
+              child: const Text('فهمت وإغلاق'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showWolfSeerDialog(BuildContext context, PlayerModel target) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppColors.darkSurface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('كشف الذئب الجاسوس 👁️', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('الدور الحقيقي للاعب [${target.name}] هو:'),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                decoration: BoxDecoration(
+                  color: target.role.color.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${target.role.icon} ${target.role.name}',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: target.role.color, fontSize: 18),
                 ),
               ),
             ],
@@ -1250,7 +1330,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
                         trailing: isSelected || isSecondSelected ? Icon(Icons.check_circle_rounded, color: role.color) : null,
                         onTap: () {
                           setState(() {
-                            if (role.id == RolesData.cupid.id) {
+                            if (role.id == RolesData.cupid.id || (role.team == Team.werewolves && controller.wolfCubRevengeActive)) {
                               if (_selectedTarget == null) {
                                 _selectedTarget = player;
                               } else if (_secondSelectedTarget == null && player.id != _selectedTarget!.id) {
