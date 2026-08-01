@@ -130,7 +130,7 @@ class AppTheme {
 }
 
 // ============================================================================
-// 3. SHARED WIDGETS (RESPONSIVE & SAFE)
+// 3. SHARED WIDGETS
 // ============================================================================
 class CustomButton extends StatelessWidget {
   final String text;
@@ -692,7 +692,7 @@ class GameController extends ChangeNotifier {
 }
 
 // ============================================================================
-// 6. PLAYER SETUP PAGE (SAFE & RESPONSIVE)
+// 6. PLAYER SETUP PAGE (SAFE & MULTI-ROLE COUNTER)
 // ============================================================================
 class PlayerSetupPage extends StatefulWidget {
   const PlayerSetupPage({super.key});
@@ -738,20 +738,33 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
     }
   }
 
-  void _toggleRole(RoleModel role) {
+  void _addRoleCount(RoleModel role) {
     setState(() {
-      if (_selectedRoles.contains(role)) {
-        if (_selectedRoles.where((r) => r.id == role.id).length > 1 || role.id != RolesData.villager.id) {
-          _selectedRoles.remove(role);
-        }
+      if (_selectedRoles.length < _playerNames.length) {
+        _selectedRoles.add(role);
       } else {
-        if (_selectedRoles.length < _playerNames.length) {
-          _selectedRoles.add(role);
+        int idx = _selectedRoles.indexWhere((r) => r.id == RolesData.villager.id && role.id != RolesData.villager.id);
+        if (idx != -1) {
+          _selectedRoles[idx] = role;
         } else {
-          int idx = _selectedRoles.indexWhere((r) => r.id == RolesData.villager.id);
-          if (idx != -1) {
-            _selectedRoles[idx] = role;
-          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('عدد الأدوار (${_selectedRoles.length}) يطابق عدد اللاعبين! أضف لاعباً جديداً لزيادة الأدوار.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  void _removeRoleCount(RoleModel role) {
+    setState(() {
+      int count = _selectedRoles.where((r) => r.id == role.id).length;
+      if (count > 0) {
+        int idx = _selectedRoles.indexWhere((r) => r.id == role.id);
+        if (idx != -1) {
+          _selectedRoles.removeAt(idx);
         }
       }
     });
@@ -833,7 +846,7 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('قائمة اللاعبين (${_playerNames.length})', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    Text('الأدوار: ${_selectedRoles.length}', style: const TextStyle(fontSize: 14, color: AppColors.secondary)),
+                    Text('الأدوار المحددة: ${_selectedRoles.length}', style: const TextStyle(fontSize: 14, color: AppColors.secondary)),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -854,7 +867,7 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
                   }),
                 ),
                 const SizedBox(height: 20),
-                const Text('اختر الأدوار المشاركة في الجولة (13 دور متوفر):', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text('اختر وتكرار الأدوار المشاركة في الجولة:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
                 GridView.builder(
                   shrinkWrap: true,
@@ -862,7 +875,7 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
                   itemCount: RolesData.allRoles.length,
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: constraints.maxWidth > 600 ? 3 : 2,
-                    childAspectRatio: 1.3,
+                    childAspectRatio: 1.15,
                     crossAxisSpacing: 8,
                     mainAxisSpacing: 8,
                   ),
@@ -871,38 +884,57 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
                     final count = _selectedRoles.where((r) => r.id == role.id).length;
                     final isSelected = count > 0;
 
-                    return GestureDetector(
-                      onTap: () => _toggleRole(role),
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: isSelected ? role.color.withValues(alpha: 0.2) : AppColors.darkSurface.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: isSelected ? role.color : Colors.white10, width: isSelected ? 2 : 1),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(role.icon, style: const TextStyle(fontSize: 24)),
-                                if (isSelected)
-                                  CircleAvatar(
-                                    radius: 10,
-                                    backgroundColor: role.color,
-                                    child: Text('$count', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
-                                  ),
-                              ],
-                            ),
-                            const Spacer(),
-                            Text(role.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
-                            Text(
-                              role.team == Team.werewolves ? 'شر 🐺' : role.team == Team.villagers ? 'خير 🛡️' : 'محايد 🎭',
-                              style: TextStyle(fontSize: 11, color: role.color),
-                            ),
-                          ],
-                        ),
+                    return Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isSelected ? role.color.withValues(alpha: 0.2) : AppColors.darkSurface.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: isSelected ? role.color : Colors.white10, width: isSelected ? 2 : 1),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(role.icon, style: const TextStyle(fontSize: 24)),
+                              Text(
+                                role.team == Team.werewolves ? 'شر 🐺' : role.team == Team.villagers ? 'خير 🛡️' : 'محايد 🎭',
+                                style: TextStyle(fontSize: 11, color: role.color, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          Text(role.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              InkWell(
+                                onTap: () => _removeRoleCount(role),
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
+                                  child: const Icon(Icons.remove, size: 16, color: Colors.white),
+                                ),
+                              ),
+                              Text(
+                                '$count',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: count > 0 ? role.color : Colors.white70),
+                              ),
+                              InkWell(
+                                onTap: () => _addRoleCount(role),
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(color: role.color.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(8)),
+                                  child: const Icon(Icons.add, size: 16, color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -924,7 +956,7 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
 }
 
 // ============================================================================
-// 7. ROLE REVEAL PAGE (SAFE & RESPONSIVE)
+// 7. ROLE REVEAL PAGE
 // ============================================================================
 class RoleRevealPage extends StatefulWidget {
   const RoleRevealPage({super.key});
@@ -1039,7 +1071,7 @@ class _RoleRevealPageState extends State<RoleRevealPage> {
 }
 
 // ============================================================================
-// 8. NIGHT PHASE PAGE (SAFE & RESPONSIVE)
+// 8. NIGHT PHASE PAGE
 // ============================================================================
 class NightPhasePage extends StatefulWidget {
   const NightPhasePage({super.key});
@@ -1251,7 +1283,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
 }
 
 // ============================================================================
-// 9. DAY PHASE PAGE (SAFE & RESPONSIVE)
+// 9. DAY PHASE PAGE
 // ============================================================================
 class DayPhasePage extends StatefulWidget {
   const DayPhasePage({super.key});
@@ -1437,7 +1469,7 @@ class _DayPhasePageState extends State<DayPhasePage> {
 }
 
 // ============================================================================
-// 10. GAME OVER PAGE (SAFE & RESPONSIVE)
+// 10. GAME OVER PAGE
 // ============================================================================
 class GameOverPage extends StatelessWidget {
   const GameOverPage({super.key});
