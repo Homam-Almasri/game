@@ -241,7 +241,7 @@ class GlassCard extends StatelessWidget {
 }
 
 // ============================================================================
-// 4. DOMAIN MODELS & ROLES DATA
+// 4. DOMAIN MODELS & ROLES DATA (WITH NUMERIC POWER USAGE LIMITS)
 // ============================================================================
 enum Team { villagers, werewolves, neutral }
 
@@ -255,6 +255,7 @@ class RoleModel {
   final int nightPriority;
   final Color color;
   final String strategyTip;
+  final String powerLimits;
 
   const RoleModel({
     required this.id,
@@ -266,6 +267,7 @@ class RoleModel {
     required this.nightPriority,
     required this.color,
     this.strategyTip = '',
+    required this.powerLimits,
   });
 }
 
@@ -316,6 +318,7 @@ class RolesData {
     nightPriority: 99,
     color: Color(0xFF10B981),
     strategyTip: 'لاحظ من يتحدث كثيراً أو يحاول توجيه التهم بسرعة بدون أدلة؛ غالباً ما يكون مستذئباً يحاول تضليل القرية.',
+    powerLimits: '📊 القدرة: تصويت عادي بصوت واحد (1) نهار كل جولة. لا يوجد حركة ليلاً.',
   );
 
   static const RoleModel seer = RoleModel(
@@ -328,6 +331,7 @@ class RolesData {
     nightPriority: 2,
     color: Color(0xFF8B5CF6),
     strategyTip: 'لا تكشف عن نفسك مبكراً حتى لا تستهدفك الذئاب، ووجّه النقاش بذكاء بناءً على معلوماتك السريّة.',
+    powerLimits: '📊 القدرة: كشف انتماء لاعب واحد (1) كل ليلة طوال بقائه حياً.',
   );
 
   static const RoleModel doctor = RoleModel(
@@ -339,6 +343,7 @@ class RolesData {
     nightActionPrompt: 'اختر لاعباً لحمايته هذه الليلة:',
     nightPriority: 1,
     color: Color(0xFF06B6D4),
+    powerLimits: '📊 القدرة: حماية لاعب واحد (1) كل ليلة (يمكنه حماية نفسه أو غيره دون حد أقصى للرات).',
   );
 
   static const RoleModel witch = RoleModel(
@@ -351,6 +356,7 @@ class RolesData {
     nightPriority: 4,
     color: Color(0xFFA855F7),
     strategyTip: 'احتفظ بجرعة الشفاء للشخصيات القوية كالعراف أو نفسك، واستخدم السم عندما تتيقن من هوية أحد المستذئبين.',
+    powerLimits: '📊 القدرة: جرعة شفاء واحدة (1) + جرعة سم واحدة (1) فقط طوال كامل اللعبة.',
   );
 
   static const RoleModel hunter = RoleModel(
@@ -362,6 +368,7 @@ class RolesData {
     nightActionPrompt: 'أنت تترقب في الظلام بنندقيتك.',
     nightPriority: 98,
     color: Color(0xFFD97706),
+    powerLimits: '📊 القدرة: رصاصة انتقام واحدة (1) عند الموت فقط.',
   );
 
   static const RoleModel mayor = RoleModel(
@@ -373,6 +380,7 @@ class RolesData {
     nightActionPrompt: 'أنت تنام استعداداً لقيادة القرية نهاراً.',
     nightPriority: 97,
     color: Color(0xFF3B82F6),
+    powerLimits: '📊 القدرة: صوت مضاعف بقيمة صوتين (2) دائماً في تصويت النهار.',
   );
 
   static const RoleModel werewolf = RoleModel(
@@ -385,6 +393,7 @@ class RolesData {
     nightPriority: 3,
     color: Color(0xFFEF4444),
     strategyTip: 'تظاهر بالدفاع عن القرويين وتحدث بثقة نهاراً لتبعد الشبهات عن نفسك وقطيعك.',
+    powerLimits: '📊 القدرة: التصويت على ضحية واحدة (1) مع القطيع كل ليلة.',
   );
 
   static const RoleModel alphaWolf = RoleModel(
@@ -396,6 +405,7 @@ class RolesData {
     nightActionPrompt: 'اقد قطيع الذئاب واختر الضحية:',
     nightPriority: 3,
     color: Color(0xFFB91C1C),
+    powerLimits: '📊 القدرة: قيادة هجوم الذئاب + التخفي كبريء من فحص العراف دائماً.',
   );
 
   static const RoleModel wolfSeer = RoleModel(
@@ -407,6 +417,7 @@ class RolesData {
     nightActionPrompt: 'اختر لاعباً لتكشف دوره للذئاب:',
     nightPriority: 2,
     color: Color(0xFFDC2626),
+    powerLimits: '📊 القدرة: كشف دور كامل للاعب واحد (1) كل ليلة.',
   );
 
   static const RoleModel wolfCub = RoleModel(
@@ -418,6 +429,7 @@ class RolesData {
     nightActionPrompt: 'أنت تختبئ مع قطيعك.',
     nightPriority: 3,
     color: Color(0xFFF97316),
+    powerLimits: '📊 القدرة: يمنح القطيع ضحيتين اثنتين (2) في الليلة التالية إذا تم إعدامه نهاراً.',
   );
 
   static const RoleModel fool = RoleModel(
@@ -430,6 +442,7 @@ class RolesData {
     nightPriority: 96,
     color: Color(0xFFEC4899),
     strategyTip: 'تصرف بشبهة بسيطة وغير مباشرة ليدور النقاش حولك ويصوت الجميع لإعدامك.',
+    powerLimits: '📊 القدرة: فوز فوري باللعبة بمجرد نجاح القرويين في إعدامه مرة واحدة (1) نهاراً.',
   );
 
   static const RoleModel serialKiller = RoleModel(
@@ -441,6 +454,7 @@ class RolesData {
     nightActionPrompt: 'اختر ضحيتك المستقلة لهذه الليلة:',
     nightPriority: 5,
     color: Color(0xFF6B7280),
+    powerLimits: '📊 القدرة: قتل ضحية واحدة (1) كل ليلة مستقل عن بقية الفرق.',
   );
 
   static const RoleModel cupid = RoleModel(
@@ -452,6 +466,7 @@ class RolesData {
     nightActionPrompt: 'اختر لاعبين لتربطهما بعاطفة الحب الأبدي:',
     nightPriority: 0,
     color: Color(0xFFF43F5E),
+    powerLimits: '📊 القدرة: ربط حبيبين اثنين (2) مرة واحدة فقط في الليلة الأولى.',
   );
 
   static List<RoleModel> get allRoles => [
@@ -847,7 +862,7 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.menu_book_rounded, color: Colors.amber),
-            tooltip: 'دليل الشخصيات',
+            tooltip: 'دليل الشخصيات والقدرات',
             onPressed: () {
               Navigator.push(
                 context,
@@ -880,7 +895,7 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
                               );
                             },
                             icon: const Icon(Icons.menu_book_rounded, size: 18, color: Colors.amber),
-                            label: const Text('موسوعة الأدوار 📚', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+                            label: const Text('موسوعة الأدوار والقدرات 📚', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),
@@ -1026,7 +1041,7 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
 }
 
 // ============================================================================
-// 7. ROLES GUIDE / ENCYCLOPEDIA PAGE (NEW FEATURE)
+// 7. ROLES GUIDE / ENCYCLOPEDIA PAGE (WITH NUMERIC POWER LIMITS)
 // ============================================================================
 class RolesGuidePage extends StatefulWidget {
   const RolesGuidePage({super.key});
@@ -1088,13 +1103,35 @@ class _RolesGuidePageState extends State<RolesGuidePage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              const Text('📜 الشرح والدور الرسمي:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.amber)),
+              const SizedBox(height: 16),
+              // NUMERIC POWER USAGE LIMITS BOX
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.flash_on_rounded, color: Colors.amber, size: 24),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        role.powerLimits,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.amber),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('📜 الشرح والدور الرسمي:', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
               const SizedBox(height: 6),
               Text(role.description, style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.white90)),
               if (role.strategyTip.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                const Text('💡 نصيحة استراتيجية للعب:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.secondary)),
+                const SizedBox(height: 14),
+                const Text('💡 نصيحة استراتيجية للعب:', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.secondary)),
                 const SizedBox(height: 6),
                 Text(role.strategyTip, style: const TextStyle(fontSize: 13, height: 1.4, color: AppColors.textSecondaryDark)),
               ],
@@ -1125,7 +1162,7 @@ class _RolesGuidePageState extends State<RolesGuidePage> {
     }).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('موسوعة ودليل الأدوار 📚')),
+      appBar: AppBar(title: const Text('موسوعة الأدوار والقدرات 📚')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -1169,26 +1206,43 @@ class _RolesGuidePageState extends State<RolesGuidePage> {
                       borderRadius: 16,
                       padding: const EdgeInsets.all(14),
                       onTap: () => _showRoleDetailModal(context, role),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(role.icon, style: const TextStyle(fontSize: 36)),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(role.name, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: role.color)),
-                                const SizedBox(height: 2),
-                                Text(
-                                  role.description,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryDark),
+                          Row(
+                            children: [
+                              Text(role.icon, style: const TextStyle(fontSize: 36)),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(role.name, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: role.color)),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      role.description,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryDark),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
+                              const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.white38),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              role.powerLimits,
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber),
                             ),
                           ),
-                          const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.white38),
                         ],
                       ),
                     );
@@ -1283,7 +1337,20 @@ class _RoleRevealPageState extends State<RoleRevealPage> {
                                       style: TextStyle(fontWeight: FontWeight.bold, color: currentPlayer.role.color),
                                     ),
                                   ),
-                                  const SizedBox(height: 16),
+                                  const SizedBox(height: 14),
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      currentPlayer.role.powerLimits,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.amber),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
                                   Text(currentPlayer.role.description, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, height: 1.4)),
                                 ],
                               )
@@ -1551,7 +1618,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
                         selected: _witchUseHeal,
                         disabledColor: Colors.grey.withValues(alpha: 0.2),
                         selectedColor: Colors.green.withValues(alpha: 0.3),
-                        label: Text(controller.witchHasHealPotion ? 'استخدام جرعة الشفاء 🧪' : 'تم استهلاك الشفاء ❌'),
+                        label: Text(controller.witchHasHealPotion ? 'جرعة الشفاء (1) 🧪' : 'تم استهلاك الشفاء (0) ❌'),
                         onSelected: controller.witchHasHealPotion
                             ? (val) => setState(() {
                                   _witchUseHeal = val;
@@ -1563,7 +1630,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
                         selected: _witchUsePoison,
                         disabledColor: Colors.grey.withValues(alpha: 0.2),
                         selectedColor: Colors.purple.withValues(alpha: 0.3),
-                        label: Text(controller.witchHasPoisonPotion ? 'استخدام جرعة السم ☠️' : 'تم استهلاك السم ❌'),
+                        label: Text(controller.witchHasPoisonPotion ? 'جرعة السم (1) ☠️' : 'تم استهلاك السم (0) ❌'),
                         onSelected: controller.witchHasPoisonPotion
                             ? (val) => setState(() {
                                   _witchUsePoison = val;
@@ -1843,7 +1910,7 @@ class _DayPhasePageState extends State<DayPhasePage> {
 class GameOverPage extends StatelessWidget {
   const GameOverPage({super.key});
 
-  @override
+  @style
   Widget build(BuildContext context) {
     final controller = context.watch<GameController>();
     final allPlayers = controller.players;
