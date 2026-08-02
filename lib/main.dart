@@ -1385,7 +1385,7 @@ class _RoleRevealPageState extends State<RoleRevealPage> {
 }
 
 // ============================================================================
-// 9. NIGHT PHASE PAGE
+// 9. NIGHT PHASE PAGE (SECRET HANDOVER & TOGGLE TARGET DESELECTION)
 // ============================================================================
 class NightPhasePage extends StatefulWidget {
   const NightPhasePage({super.key});
@@ -1399,6 +1399,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
   PlayerModel? _secondSelectedTarget;
   bool _witchUseHeal = false;
   bool _witchUsePoison = false;
+  bool _isTurnHandedOver = false;
 
   void _onConfirmAction(GameController controller) {
     final role = controller.currentNightRole;
@@ -1435,6 +1436,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
       _secondSelectedTarget = null;
       _witchUseHeal = false;
       _witchUsePoison = false;
+      _isTurnHandedOver = false;
     });
 
     bool hasNext = controller.nextNightStep();
@@ -1584,132 +1586,177 @@ class _NightPhasePageState extends State<NightPhasePage> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-          child: Column(
-            children: [
-              GlassCard(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    const Icon(Icons.person_pin_rounded, size: 36, color: Colors.amber),
-                    const SizedBox(width: 12),
-                    Expanded(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: !_isTurnHandedOver
+                // 1. INTERMEDIARY PASS PHONE SCREEN (NO ROLE TITLES OR PROMPTS REVEALED!)
+                ? Center(
+                    key: const ValueKey('pass_screen'),
+                    child: GlassCard(
+                      borderRadius: 24,
+                      padding: const EdgeInsets.all(24),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('مرّر الهاتف إلى: [$playerNamesString] 📲', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.amber)),
-                          const SizedBox(height: 4),
-                          Text(role.nightActionPrompt, style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryDark)),
+                          const Icon(Icons.phone_android_rounded, size: 64, color: Colors.amber),
+                          const SizedBox(height: 16),
+                          const Text('مرّر الهاتف إلى:', style: TextStyle(fontSize: 16, color: AppColors.textSecondaryDark)),
+                          const SizedBox(height: 6),
+                          Text(
+                            playerNamesString,
+                            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.amber),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            '🔒 تأكد أن بقية اللاعبين يُغمضون أعينهم تماماً!',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 14, color: Colors.white70),
+                          ),
+                          const SizedBox(height: 24),
+                          CustomButton(
+                            text: 'أنا [$playerNamesString] - استلام الجهاز والبدء 👁️',
+                            onPressed: () => setState(() => _isTurnHandedOver = true),
+                          ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              if (role.id == RolesData.witch.id) ...[
-                GlassCard(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  )
+                // 2. ACTIVE NIGHT ACTION SCREEN (REVEALED ONLY AFTER RECEIVING THE PHONE)
+                : Column(
+                    key: const ValueKey('action_screen'),
                     children: [
-                      FilterChip(
-                        selected: _witchUseHeal,
-                        disabledColor: Colors.grey.withValues(alpha: 0.2),
-                        selectedColor: Colors.green.withValues(alpha: 0.3),
-                        label: Text(controller.witchHasHealPotion ? 'جرعة الشفاء (1) 🧪' : 'تم استهلاك الشفاء (0) ❌'),
-                        onSelected: controller.witchHasHealPotion
-                            ? (val) => setState(() {
-                                  _witchUseHeal = val;
-                                  if (!val) _selectedTarget = null;
-                                })
-                            : null,
+                      GlassCard(
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          children: [
+                            Text(role.icon, style: const TextStyle(fontSize: 36)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('دور: ${role.name}', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: role.color)),
+                                  const SizedBox(height: 2),
+                                  Text(role.nightActionPrompt, style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryDark)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      FilterChip(
-                        selected: _witchUsePoison,
-                        disabledColor: Colors.grey.withValues(alpha: 0.2),
-                        selectedColor: Colors.purple.withValues(alpha: 0.3),
-                        label: Text(controller.witchHasPoisonPotion ? 'جرعة السم (1) ☠️' : 'تم استهلاك السم (0) ❌'),
-                        onSelected: controller.witchHasPoisonPotion
-                            ? (val) => setState(() {
-                                  _witchUsePoison = val;
-                                  if (!val) _secondSelectedTarget = null;
-                                })
-                            : null,
+                      const SizedBox(height: 12),
+
+                      if (role.id == RolesData.witch.id) ...[
+                        GlassCard(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              FilterChip(
+                                selected: _witchUseHeal,
+                                disabledColor: Colors.grey.withValues(alpha: 0.2),
+                                selectedColor: Colors.green.withValues(alpha: 0.3),
+                                label: Text(controller.witchHasHealPotion ? 'جرعة الشفاء (1) 🧪' : 'تم استهلاك الشفاء (0) ❌'),
+                                onSelected: controller.witchHasHealPotion
+                                    ? (val) => setState(() {
+                                          _witchUseHeal = val;
+                                          if (!val) _selectedTarget = null;
+                                        })
+                                    : null,
+                              ),
+                              FilterChip(
+                                selected: _witchUsePoison,
+                                disabledColor: Colors.grey.withValues(alpha: 0.2),
+                                selectedColor: Colors.purple.withValues(alpha: 0.3),
+                                label: Text(controller.witchHasPoisonPotion ? 'جرعة السم (1) ☠️' : 'تم استهلاك السم (0) ❌'),
+                                onSelected: controller.witchHasPoisonPotion
+                                    ? (val) => setState(() {
+                                          _witchUsePoison = val;
+                                          if (!val) _secondSelectedTarget = null;
+                                        })
+                                    : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: alivePlayers.length,
+                          itemBuilder: (context, index) {
+                            final player = alivePlayers[index];
+                            final isSelected = _selectedTarget?.id == player.id;
+                            final isSecondSelected = _secondSelectedTarget?.id == player.id;
+
+                            return Card(
+                              color: isSelected || isSecondSelected ? AppColors.primary.withValues(alpha: 0.3) : AppColors.darkSurface,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: BorderSide(color: isSelected || isSecondSelected ? AppColors.primary : Colors.white10),
+                              ),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                                  child: Text('${index + 1}', style: const TextStyle(color: Colors.white)),
+                                ),
+                                title: Text(player.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: role.id == RolesData.witch.id
+                                    ? Text(
+                                        isSelected ? 'هدف الشفاء 🧪 (اضغط للإلغاء)' : isSecondSelected ? 'هدف السم ☠️ (اضغط للإلغاء)' : 'اضغط للتحديد',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isSelected ? Colors.green : isSecondSelected ? Colors.purpleAccent : Colors.grey,
+                                        ),
+                                      )
+                                    : (isSelected || isSecondSelected ? const Text('محدد (اضغط لإلغاء التحديد)', style: TextStyle(fontSize: 12, color: Colors.amber)) : null),
+                                trailing: isSelected || isSecondSelected ? const Icon(Icons.check_circle_rounded, color: AppColors.primary) : null,
+                                onTap: () {
+                                  // TOGGLE SELECTION / DESELECTION MECHANIC
+                                  setState(() {
+                                    if (role.id == RolesData.witch.id) {
+                                      if (_witchUseHeal && isSelected) {
+                                        _selectedTarget = null;
+                                      } else if (_witchUsePoison && isSecondSelected) {
+                                        _secondSelectedTarget = null;
+                                      } else if (_witchUseHeal && _selectedTarget == null) {
+                                        _selectedTarget = player;
+                                      } else if (_witchUsePoison && _secondSelectedTarget == null) {
+                                        _secondSelectedTarget = player;
+                                      }
+                                    } else if (role.id == RolesData.cupid.id || (role.team == Team.werewolves && controller.wolfCubRevengeActive)) {
+                                      if (isSelected) {
+                                        _selectedTarget = null;
+                                      } else if (isSecondSelected) {
+                                        _secondSelectedTarget = null;
+                                      } else if (_selectedTarget == null) {
+                                        _selectedTarget = player;
+                                      } else if (_secondSelectedTarget == null && player.id != _selectedTarget!.id) {
+                                        _secondSelectedTarget = player;
+                                      }
+                                    } else {
+                                      if (isSelected) {
+                                        _selectedTarget = null; // Deselect on second tap!
+                                      } else {
+                                        _selectedTarget = player;
+                                      }
+                                    }
+                                  });
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      CustomButton(
+                        text: (_selectedTarget != null || _secondSelectedTarget != null) ? 'تأكيد القرار والتحويل 📲' : 'تخطي / لا يوجد حركة',
+                        onPressed: () => _onConfirmAction(controller),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              Expanded(
-                child: ListView.builder(
-                  itemCount: alivePlayers.length,
-                  itemBuilder: (context, index) {
-                    final player = alivePlayers[index];
-                    final isSelected = _selectedTarget?.id == player.id;
-                    final isSecondSelected = _secondSelectedTarget?.id == player.id;
-
-                    return Card(
-                      color: isSelected || isSecondSelected ? AppColors.primary.withValues(alpha: 0.3) : AppColors.darkSurface,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        side: BorderSide(color: isSelected || isSecondSelected ? AppColors.primary : Colors.white10),
-                      ),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                          child: Text('${index + 1}', style: const TextStyle(color: Colors.white)),
-                        ),
-                        title: Text(player.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: role.id == RolesData.witch.id
-                            ? Text(
-                                isSelected ? 'هدف الشفاء 🧪' : isSecondSelected ? 'هدف السم ☠️' : 'اضغط للتحديد',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isSelected ? Colors.green : isSecondSelected ? Colors.purpleAccent : Colors.grey,
-                                ),
-                              )
-                            : null,
-                        trailing: isSelected || isSecondSelected ? const Icon(Icons.check_circle_rounded, color: AppColors.primary) : null,
-                        onTap: () {
-                          setState(() {
-                            if (role.id == RolesData.witch.id) {
-                              if (_witchUseHeal && _selectedTarget == null) {
-                                _selectedTarget = player;
-                              } else if (_witchUsePoison && _secondSelectedTarget == null) {
-                                _secondSelectedTarget = player;
-                              } else if (_witchUseHeal && _selectedTarget?.id == player.id) {
-                                _selectedTarget = null;
-                              } else if (_witchUsePoison && _secondSelectedTarget?.id == player.id) {
-                                _secondSelectedTarget = null;
-                              }
-                            } else if (role.id == RolesData.cupid.id || (role.team == Team.werewolves && controller.wolfCubRevengeActive)) {
-                              if (_selectedTarget == null) {
-                                _selectedTarget = player;
-                              } else if (_secondSelectedTarget == null && player.id != _selectedTarget!.id) {
-                                _secondSelectedTarget = player;
-                              } else {
-                                _selectedTarget = player;
-                                _secondSelectedTarget = null;
-                              }
-                            } else {
-                              _selectedTarget = player;
-                            }
-                          });
-                        },
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-              CustomButton(
-                text: (_selectedTarget != null || _secondSelectedTarget != null) ? 'تأكيد القرار والتحويل 📲' : 'تخطي / لا يوجد حركة',
-                onPressed: () => _onConfirmAction(controller),
-              ),
-            ],
           ),
         ),
       ),
@@ -1718,7 +1765,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
 }
 
 // ============================================================================
-// 10. DAY PHASE PAGE
+// 10. DAY PHASE PAGE (WITH DESELECT ON TAP MECHANIC)
 // ============================================================================
 class DayPhasePage extends StatefulWidget {
   const DayPhasePage({super.key});
@@ -1867,8 +1914,17 @@ class _DayPhasePageState extends State<DayPhasePage> {
                       child: ListTile(
                         leading: Text(player.role.icon, style: const TextStyle(fontSize: 24)),
                         title: Text(player.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: isSelected ? const Text('محدد للإعدام (اضغط لإلغاء التحديد)', style: TextStyle(fontSize: 12, color: Colors.redAccent)) : null,
                         trailing: isSelected ? const Icon(Icons.gavel_rounded, color: Colors.red) : null,
-                        onTap: () => setState(() => _selectedSuspect = player),
+                        onTap: () {
+                          setState(() {
+                            if (isSelected) {
+                              _selectedSuspect = null; // Toggle Deselect!
+                            } else {
+                              _selectedSuspect = player;
+                            }
+                          });
+                        },
                       ),
                     );
                   },
