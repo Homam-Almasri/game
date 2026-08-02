@@ -254,6 +254,7 @@ class RoleModel {
   final String nightActionPrompt;
   final int nightPriority;
   final Color color;
+  final String strategyTip;
 
   const RoleModel({
     required this.id,
@@ -264,6 +265,7 @@ class RoleModel {
     required this.nightActionPrompt,
     required this.nightPriority,
     required this.color,
+    this.strategyTip = '',
   });
 }
 
@@ -309,10 +311,11 @@ class RolesData {
     name: 'قروي عادي',
     icon: '🧑‍🌾',
     team: Team.villagers,
-    description: 'لا تملك قدرة خاصة ليلاً. قوتك تكمن في النقاش والتصويت في النهار كشف المستذئبين.',
+    description: 'لا تملك قدرة خاصة ليلاً. قوتك تكمن في قوة التحليل، والمشاركة بالنقاش النهارية لتكثيف الشكوك وكشف الذئاب وإعدامهم بالتصويت.',
     nightActionPrompt: 'أنت تنام بسلام هذه الليلة.',
     nightPriority: 99,
     color: Color(0xFF10B981),
+    strategyTip: 'لاحظ من يتحدث كثيراً أو يحاول توجيه التهم بسرعة بدون أدلة؛ غالباً ما يكون مستذئباً يحاول تضليل القرية.',
   );
 
   static const RoleModel seer = RoleModel(
@@ -320,10 +323,11 @@ class RolesData {
     name: 'العرّاف / المحقق',
     icon: '🔮',
     team: Team.villagers,
-    description: 'تستيقظ كل ليلة وتختار لاعباً لتكشف هويته السرية (هل هو ذئب أم بريء).',
+    description: 'تستيقظ كل ليلة وتختار لاعباً واحداً لتكشف هويته وانتمائه السري (خير أم شر).',
     nightActionPrompt: 'اختر لاعباً لكشف انتمائه السري:',
     nightPriority: 2,
     color: Color(0xFF8B5CF6),
+    strategyTip: 'لا تكشف عن نفسك مبكراً حتى لا تستهدفك الذئاب، ووجّه النقاش بذكاء بناءً على معلوماتك السريّة.',
   );
 
   static const RoleModel doctor = RoleModel(
@@ -331,7 +335,7 @@ class RolesData {
     name: 'الطبيب / الحارس',
     icon: '🩺',
     team: Team.villagers,
-    description: 'تختار لاعباً كل ليلة لحمايته من هجوم المستذئبين والتسبب في نجاته.',
+    description: 'تختار لاعباً كل ليلة لحمايته من هجمات الليل. إذا هاجمت الذئاب هذا اللاعب المحمي فإنه ينجو فوراً.',
     nightActionPrompt: 'اختر لاعباً لحمايته هذه الليلة:',
     nightPriority: 1,
     color: Color(0xFF06B6D4),
@@ -342,10 +346,11 @@ class RolesData {
     name: 'الساحرة',
     icon: '🧪',
     team: Team.villagers,
-    description: 'تملك جرعة شفاء واحدة لإنقاذ أي لاعب، وجرعة سم واحدة لقتل أي لاعب.',
-    nightActionPrompt: 'اختر اللاعب والجروع المراد استخدامها:',
+    description: 'تملك جرعة شفاء واحدة لإنقاذ أي لاعب من الموت، وجرعة سم واحدة لقتل أي لاعب تشك به.',
+    nightActionPrompt: 'اختر الجرعة واللاعب المراد استخدامها عليه:',
     nightPriority: 4,
     color: Color(0xFFA855F7),
+    strategyTip: 'احتفظ بجرعة الشفاء للشخصيات القوية كالعراف أو نفسك، واستخدم السم عندما تتيقن من هوية أحد المستذئبين.',
   );
 
   static const RoleModel hunter = RoleModel(
@@ -353,7 +358,7 @@ class RolesData {
     name: 'الصياد',
     icon: '🏹',
     team: Team.villagers,
-    description: 'إذا تم قتلك ليلاً أو إعدامك نهاراً، يمكنك إطلاق رصاصة أخيرة وأخذ لاعب معك للموت.',
+    description: 'إذا تم قتلك ليلاً أو إعدامك نهاراً، يُسمح لك بإطلاق رصاصة أخيرة وأخذ لاعب تشك به للموت معك فوراً.',
     nightActionPrompt: 'أنت تترقب في الظلام بنندقيتك.',
     nightPriority: 98,
     color: Color(0xFFD97706),
@@ -364,7 +369,7 @@ class RolesData {
     name: 'المختار / العمدة',
     icon: '🎖️',
     team: Team.villagers,
-    description: 'صوتك في تصويت الإعدام نهاراً يُحسب بصوتين بدلاً من صوت واحد عند التعادل.',
+    description: 'صوتك في تصويت الإعدام نهاراً يُحسب بصوتين بدلاً من صوت واحد، مما يجعلك القائد المرجّح للقرية عند التعادل.',
     nightActionPrompt: 'أنت تنام استعداداً لقيادة القرية نهاراً.',
     nightPriority: 97,
     color: Color(0xFF3B82F6),
@@ -375,10 +380,11 @@ class RolesData {
     name: 'مستذئب عادي',
     icon: '🐺',
     team: Team.werewolves,
-    description: 'تستيقظ مع الذئاب كل ليلة لاختيار والتصويت على ضحية واحدة لقتلها.',
+    description: 'تستيقظ مع الذئاب كل ليلة لاختيار والتصويت على ضحية واحدة لقتلها وافتراسها.',
     nightActionPrompt: 'اختر الضحية التي تلتهمها الذئاب الليلة:',
     nightPriority: 3,
     color: Color(0xFFEF4444),
+    strategyTip: 'تظاهر بالدفاع عن القرويين وتحدث بثقة نهاراً لتبعد الشبهات عن نفسك وقطيعك.',
   );
 
   static const RoleModel alphaWolf = RoleModel(
@@ -386,7 +392,7 @@ class RolesData {
     name: 'الذئب الألفا / الزعيم',
     icon: '👑',
     team: Team.werewolves,
-    description: 'قائد الذئاب، صوته حاسم ليلاً ويظهر كقروي بريء عند فحص العراف.',
+    description: 'قائد المستذئبين، صوته حاسم ليلاً. يملك ميزة خفية وهي أنه يظهر كقروي بريء عند فحص العراف له.',
     nightActionPrompt: 'اقد قطيع الذئاب واختر الضحية:',
     nightPriority: 3,
     color: Color(0xFFB91C1C),
@@ -397,7 +403,7 @@ class RolesData {
     name: 'الذئب الخائن / الجاسوس',
     icon: '👁️',
     team: Team.werewolves,
-    description: 'تستيقظ ليلاً لتكشف دور أحد القرويين وتساعد القطيع في قنص الأدوار القوية.',
+    description: 'تستيقظ ليلاً لتكشف بطاقة دور أحد القرويين وتساعد القطيع في قنص الأدوار المهمة كالعراف والطبيب.',
     nightActionPrompt: 'اختر لاعباً لتكشف دوره للذئاب:',
     nightPriority: 2,
     color: Color(0xFFDC2626),
@@ -408,7 +414,7 @@ class RolesData {
     name: 'الذئب الصغير',
     icon: '🐾',
     team: Team.werewolves,
-    description: 'إذا تم إعدامك نهاراً، يغضب القطيع وينتقم بأخذ ضحيتين في الليلة التالية.',
+    description: 'إذا تم إعدامك نهاراً، يغضب القطيع وينتقم بأخذ ضحيتين اثنتين في الليلة التالية.',
     nightActionPrompt: 'أنت تختبئ مع قطيعك.',
     nightPriority: 3,
     color: Color(0xFFF97316),
@@ -419,10 +425,11 @@ class RolesData {
     name: 'الجوكر / المجنون',
     icon: '🤡',
     team: Team.neutral,
-    description: 'هدفك الخفي أن تقنع القرويين بإعدامك نهاراً! إذا أُعدمت تفوز بمفردك فوراً.',
+    description: 'هدفك الخفي المستقل أن تقنع القرويين بإعدامك نهاراً! إذا تم إعدامك تفوز بمفردك فوراً باللعبة.',
     nightActionPrompt: 'تفكّر في خطتك الخبيثة لإقناعهم بإعدامك.',
     nightPriority: 96,
     color: Color(0xFFEC4899),
+    strategyTip: 'تصرف بشبهة بسيطة وغير مباشرة ليدور النقاش حولك ويصوت الجميع لإعدامك.',
   );
 
   static const RoleModel serialKiller = RoleModel(
@@ -430,7 +437,7 @@ class RolesData {
     name: 'القاتل المتسلسل',
     icon: '🔪',
     team: Team.neutral,
-    description: 'تلعب بمفردك! تستيقظ كل ليلة وتقتل لاعباً. تفوز إذا بقيت آخر شخص حي.',
+    description: 'تلعب بمفردك ضد الجميع! تستيقظ كل ليلة وتقتل لاعباً. تفوز باللعبة إذا بقيت آخر شخص حي بالقرية.',
     nightActionPrompt: 'اختر ضحيتك المستقلة لهذه الليلة:',
     nightPriority: 5,
     color: Color(0xFF6B7280),
@@ -441,7 +448,7 @@ class RolesData {
     name: 'كيوبيد / العاشقان',
     icon: '💘',
     team: Team.neutral,
-    description: 'في الليلة الأولى فقط، تختار لاعبين ليرتبطا بالحب. إذا مات أحدهما يموت الآخر حزناً.',
+    description: 'في الليلة الأولى فقط، تختار لاعبين ليرتبطا بالحب الأبدي. إذا مات أحدهما يموت الآخر فوراً حزناً عليه.',
     nightActionPrompt: 'اختر لاعبين لتربطهما بعاطفة الحب الأبدي:',
     nightPriority: 0,
     color: Color(0xFFF43F5E),
@@ -835,7 +842,21 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      appBar: AppBar(title: const Text('تجهيز اللعبة واللاعبين 🐺')),
+      appBar: AppBar(
+        title: const Text('تجهيز اللعبة واللاعبين 🐺'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.menu_book_rounded, color: Colors.amber),
+            tooltip: 'دليل الشخصيات',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const RolesGuidePage()),
+              );
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -847,8 +868,23 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('إضافة لاعبين 👤', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('إضافة لاعبين 👤', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          TextButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const RolesGuidePage()),
+                              );
+                            },
+                            icon: const Icon(Icons.menu_book_rounded, size: 18, color: Colors.amber),
+                            label: const Text('موسوعة الأدوار 📚', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
                           Expanded(
@@ -990,7 +1026,185 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
 }
 
 // ============================================================================
-// 7. ROLE REVEAL PAGE
+// 7. ROLES GUIDE / ENCYCLOPEDIA PAGE (NEW FEATURE)
+// ============================================================================
+class RolesGuidePage extends StatefulWidget {
+  const RolesGuidePage({super.key});
+
+  @override
+  State<RolesGuidePage> createState() => _RolesGuidePageState();
+}
+
+class _RolesGuidePageState extends State<RolesGuidePage> {
+  Team? _selectedFilter;
+
+  void _showRoleDetailModal(BuildContext context, RoleModel role) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.darkSurface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Text(role.icon, style: const TextStyle(fontSize: 48)),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(role.name, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: role.color)),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: role.color.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            role.team == Team.werewolves ? 'فريق الشر 🐺' : role.team == Team.villagers ? 'فريق الخير 🛡️' : 'فريق محايد 🎭',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: role.color, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Text('📜 الشرح والدور الرسمي:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.amber)),
+              const SizedBox(height: 6),
+              Text(role.description, style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.white90)),
+              if (role.strategyTip.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text('💡 نصيحة استراتيجية للعب:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.secondary)),
+                const SizedBox(height: 6),
+                Text(role.strategyTip, style: const TextStyle(fontSize: 13, height: 1.4, color: AppColors.textSecondaryDark)),
+              ],
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('أولوية الاستيقاظ ليلاً: #${role.nightPriority}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                    child: const Text('إغلاق', style: TextStyle(color: Colors.white)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredRoles = RolesData.allRoles.where((r) {
+      if (_selectedFilter == null) return true;
+      return r.team == _selectedFilter;
+    }).toList();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('موسوعة ودليل الأدوار 📚')),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  FilterChip(
+                    label: const Text('الكل 🌐'),
+                    selected: _selectedFilter == null,
+                    onSelected: (_) => setState(() => _selectedFilter = null),
+                  ),
+                  FilterChip(
+                    label: const Text('الخير 🛡️'),
+                    selected: _selectedFilter == Team.villagers,
+                    selectedColor: Colors.green.withValues(alpha: 0.3),
+                    onSelected: (_) => setState(() => _selectedFilter = Team.villagers),
+                  ),
+                  FilterChip(
+                    label: const Text('الشر 🐺'),
+                    selected: _selectedFilter == Team.werewolves,
+                    selectedColor: Colors.red.withValues(alpha: 0.3),
+                    onSelected: (_) => setState(() => _selectedFilter = Team.werewolves),
+                  ),
+                  FilterChip(
+                    label: const Text('محايد 🎭'),
+                    selected: _selectedFilter == Team.neutral,
+                    selectedColor: Colors.purple.withValues(alpha: 0.3),
+                    onSelected: (_) => setState(() => _selectedFilter = Team.neutral),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: filteredRoles.length,
+                  itemBuilder: (context, index) {
+                    final role = filteredRoles[index];
+                    return GlassCard(
+                      borderRadius: 16,
+                      padding: const EdgeInsets.all(14),
+                      onTap: () => _showRoleDetailModal(context, role),
+                      child: Row(
+                        children: [
+                          Text(role.icon, style: const TextStyle(fontSize: 36)),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(role.name, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: role.color)),
+                                const SizedBox(height: 2),
+                                Text(
+                                  role.description,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryDark),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.white38),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// 8. ROLE REVEAL PAGE
 // ============================================================================
 class RoleRevealPage extends StatefulWidget {
   const RoleRevealPage({super.key});
@@ -1105,7 +1319,7 @@ class _RoleRevealPageState extends State<RoleRevealPage> {
 }
 
 // ============================================================================
-// 8. NIGHT PHASE PAGE (PRIVATE SEER POPUP & ANY-PLAYER WITCH POTIONS)
+// 9. NIGHT PHASE PAGE
 // ============================================================================
 class NightPhasePage extends StatefulWidget {
   const NightPhasePage({super.key});
@@ -1327,7 +1541,6 @@ class _NightPhasePageState extends State<NightPhasePage> {
               ),
               const SizedBox(height: 12),
 
-              // Witch Controls (Flexible potioned selection on ANY player)
               if (role.id == RolesData.witch.id) ...[
                 GlassCard(
                   padding: const EdgeInsets.all(12),
@@ -1439,7 +1652,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
 }
 
 // ============================================================================
-// 9. DAY PHASE PAGE
+// 10. DAY PHASE PAGE
 // ============================================================================
 class DayPhasePage extends StatefulWidget {
   const DayPhasePage({super.key});
@@ -1625,7 +1838,7 @@ class _DayPhasePageState extends State<DayPhasePage> {
 }
 
 // ============================================================================
-// 10. GAME OVER PAGE
+// 11. GAME OVER PAGE
 // ============================================================================
 class GameOverPage extends StatelessWidget {
   const GameOverPage({super.key});
