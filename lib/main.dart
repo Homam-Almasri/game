@@ -241,7 +241,7 @@ class GlassCard extends StatelessWidget {
 }
 
 // ============================================================================
-// 4. DOMAIN MODELS & ROLES DATA (WITH NUMERIC POWER USAGE LIMITS)
+// 4. DOMAIN MODELS & ROLES DATA
 // ============================================================================
 enum Team { villagers, werewolves, neutral }
 
@@ -343,7 +343,7 @@ class RolesData {
     nightActionPrompt: 'اختر لاعباً لحمايته هذه الليلة:',
     nightPriority: 1,
     color: Color(0xFF06B6D4),
-    powerLimits: '📊 القدرة: حماية لاعب واحد (1) كل ليلة (يمكنه حماية نفسه أو غيره دون حد أقصى للرات).',
+    powerLimits: '📊 القدرة: حماية لاعب واحد (1) كل ليلة (يمكنه حماية نفسه أو غيره دون حد أقصى للمرات).',
   );
 
   static const RoleModel witch = RoleModel(
@@ -1041,7 +1041,7 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
 }
 
 // ============================================================================
-// 7. ROLES GUIDE / ENCYCLOPEDIA PAGE (WITH NUMERIC POWER LIMITS)
+// 7. ROLES GUIDE / ENCYCLOPEDIA PAGE
 // ============================================================================
 class RolesGuidePage extends StatefulWidget {
   const RolesGuidePage({super.key});
@@ -1104,7 +1104,6 @@ class _RolesGuidePageState extends State<RolesGuidePage> {
                 ],
               ),
               const SizedBox(height: 16),
-              // NUMERIC POWER USAGE LIMITS BOX
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -1128,7 +1127,7 @@ class _RolesGuidePageState extends State<RolesGuidePage> {
               const SizedBox(height: 16),
               const Text('📜 الشرح والدور الرسمي:', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
               const SizedBox(height: 6),
-              Text(role.description, style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.white90)),
+              Text(role.description, style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.white)),
               if (role.strategyTip.isNotEmpty) ...[
                 const SizedBox(height: 14),
                 const Text('💡 نصيحة استراتيجية للعب:', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.secondary)),
@@ -1910,7 +1909,7 @@ class _DayPhasePageState extends State<DayPhasePage> {
 class GameOverPage extends StatelessWidget {
   const GameOverPage({super.key});
 
-  @style
+  @override
   Widget build(BuildContext context) {
     final controller = context.watch<GameController>();
     final allPlayers = controller.players;
