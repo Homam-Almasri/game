@@ -334,7 +334,7 @@ class RolesData {
     nightPriority: 2,
     color: Color(0xFF8B5CF6),
     strategyTip: 'لا تكشف عن نفسك مبكراً حتى لا تستهدفك الذئاب، ووجّه النقاش بذكاء بناءً على معلوماتك السريّة.',
-    powerLimits: '📊 القدرة: كشف انتماء لاعب واحد (1) كل ليلة طوال بقائه حياً.',
+    powerLimits: '📊 القدرة: كشف انتماء لاعب واحد (1) كل ليلة طوال بقائه حياً مع الاحتفاظ بسجل الكشوفات السابقة.',
   );
 
   static const RoleModel doctor = RoleModel(
@@ -493,7 +493,7 @@ class RolesData {
 }
 
 // ============================================================================
-// 5. GAME STATE CONTROLLER (SEQUENTIAL PLAYER-ORDER NIGHT TURNS)
+// 5. GAME STATE CONTROLLER (WITH SEER MEMORY PERSISTENCE)
 // ============================================================================
 class GameController extends ChangeNotifier {
   List<PlayerModel> _players = [];
@@ -501,6 +501,9 @@ class GameController extends ChangeNotifier {
   int _currentNightPlayerIndex = 0;
   List<PlayerModel> _activeNightPlayers = [];
   int _roundCount = 1;
+
+  // PERSISTENT SEER INSPECTION JOURNAL (Player Name -> Result String)
+  final Map<String, String> _seerMemory = {};
 
   List<String> _morningEvents = [];
   String? _winnerTeamMessage;
@@ -527,6 +530,7 @@ class GameController extends ChangeNotifier {
   int get currentNightPlayerIndex => _currentNightPlayerIndex;
   List<PlayerModel> get activeNightPlayers => _activeNightPlayers;
   int get roundCount => _roundCount;
+  Map<String, String> get seerMemory => _seerMemory;
 
   PlayerModel get currentNightPlayer => _activeNightPlayers[_currentNightPlayerIndex];
 
@@ -534,6 +538,7 @@ class GameController extends ChangeNotifier {
     _selectedRoles = List.from(chosenRoles);
     _players.clear();
     _morningEvents.clear();
+    _seerMemory.clear();
     _isGameOver = false;
     _winnerTeamMessage = null;
     _roundCount = 1;
@@ -556,6 +561,11 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void saveSeerMemory(String targetName, String resultText) {
+    _seerMemory[targetName] = resultText;
+    notifyListeners();
+  }
+
   void startNightPhase() {
     _currentNightPlayerIndex = 0;
     doctorTarget = null;
@@ -569,9 +579,7 @@ class GameController extends ChangeNotifier {
       p.resetNightStates();
     }
 
-    // STRICT SEQUENTIAL PLAYER ORDER (Ahmed -> Homam -> Mohammad -> Hassan ...)
     _activeNightPlayers = List.from(alivePlayers);
-
     notifyListeners();
   }
 
@@ -623,7 +631,6 @@ class GameController extends ChangeNotifier {
     _morningEvents.clear();
     List<PlayerModel> killedTonight = [];
 
-    // 1. Resolve Werewolves Attack(s)
     for (var wTarget in wolfTargets) {
       if (wTarget.isProtected || wTarget.isHealedByWitch) {
         _morningEvents.add('🛡️ نجحت حماية الطبيب أو علاج الساحرة في إنقاذ إحدى ضحايا المستذئبين!');
@@ -634,7 +641,6 @@ class GameController extends ChangeNotifier {
       }
     }
 
-    // 2. Resolve Serial Killer Attack
     if (serialKillerTarget != null && serialKillerTarget!.isTargetedBySerialKiller) {
       if (serialKillerTarget!.isProtected || serialKillerTarget!.isHealedByWitch) {
         _morningEvents.add('🛡️ نجحت حماية الطبيب/الساحرة في صّد هجوم القاتل المتسلسل!');
@@ -645,14 +651,12 @@ class GameController extends ChangeNotifier {
       }
     }
 
-    // 3. Resolve Witch Poison
     if (witchPoisonTarget != null && witchPoisonTarget!.isTargetedByWitchPoison) {
       if (!killedTonight.contains(witchPoisonTarget)) {
         killedTonight.add(witchPoisonTarget!);
       }
     }
 
-    // Apply deaths & Cupid heartbreak
     for (var victim in killedTonight) {
       victim.isAlive = false;
       _morningEvents.add('❌ للأسف، قُتل اللاعب [${victim.name}] (${victim.role.name}) خلال الليل!');
@@ -1379,7 +1383,7 @@ class _RoleRevealPageState extends State<RoleRevealPage> {
 }
 
 // ============================================================================
-// 9. NIGHT PHASE PAGE (STRICT SEQUENTIAL PLAYER-NAME ORDER)
+// 9. NIGHT PHASE PAGE (PERSISTENT SEER JOURNAL MEMORY DISPLAY)
 // ============================================================================
 class NightPhasePage extends StatefulWidget {
   const NightPhasePage({super.key});
@@ -1406,7 +1410,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
     } else if (role.id == RolesData.serialKiller.id && _selectedTarget != null) {
       controller.setSerialKillerTarget(_selectedTarget!);
     } else if (role.id == RolesData.seer.id && _selectedTarget != null) {
-      _showPrivateSeerDialog(context, _selectedTarget!);
+      _showPrivateSeerDialog(context, controller, _selectedTarget!);
       return;
     } else if (role.id == RolesData.wolfSeer.id && _selectedTarget != null) {
       _showPrivateWolfSeerDialog(context, _selectedTarget!);
@@ -1444,13 +1448,14 @@ class _NightPhasePageState extends State<NightPhasePage> {
     }
   }
 
-  void _showPrivateSeerDialog(BuildContext context, PlayerModel target) {
+  void _showPrivateSeerDialog(BuildContext context, GameController controller, PlayerModel target) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
         bool isRevealed = false;
         final isWolf = target.role.team == Team.werewolves && target.role.id != RolesData.alphaWolf.id;
+        final resultText = isWolf ? 'فريق المستذئبين / الشر 🐺' : 'فريق القرويين / الخير 🛡️';
 
         return StatefulBuilder(
           builder: (context, setDialogState) {
@@ -1467,7 +1472,10 @@ class _NightPhasePageState extends State<NightPhasePage> {
                     const Text('تأكد أنك بمفردك تنظر للشاشة كعرّاف!', textAlign: TextAlign.center),
                     const SizedBox(height: 14),
                     ElevatedButton(
-                      onPressed: () => setDialogState(() => isRevealed = true),
+                      onPressed: () {
+                        controller.saveSeerMemory(target.name, resultText);
+                        setDialogState(() => isRevealed = true);
+                      },
                       style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
                       child: const Text('اضغط هنا لرؤية النتيجة 👁️', style: TextStyle(color: Colors.white)),
                     ),
@@ -1481,10 +1489,12 @@ class _NightPhasePageState extends State<NightPhasePage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        isWolf ? 'فريق المستذئبين / الشر 🐺' : 'فريق القرويين / الخير 🛡️',
+                        resultText,
                         style: TextStyle(fontWeight: FontWeight.bold, color: isWolf ? Colors.red : Colors.green, fontSize: 16),
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    const Text('✨ تم حفظ هذه النتيجة في سجل كشوفاتك الخاصة لليالي القادمة!', style: TextStyle(fontSize: 11, color: Colors.amber)),
                   ],
                 ],
               ),
@@ -1582,7 +1592,6 @@ class _NightPhasePageState extends State<NightPhasePage> {
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
             child: !_isTurnHandedOver
-                // 1. STRICT INTERMEDIARY PASS-PHONE SCREEN (Ahmed -> Homam -> Mohammad -> Hassan ...)
                 ? Center(
                     key: ValueKey('pass_${currentPlayer.id}'),
                     child: GlassCard(
@@ -1615,7 +1624,6 @@ class _NightPhasePageState extends State<NightPhasePage> {
                       ),
                     ),
                   )
-                // 2. SECRET NIGHT ACTION SCREEN FOR THIS SPECIFIC PLAYER
                 : Column(
                     key: ValueKey('action_${currentPlayer.id}'),
                     children: [
@@ -1639,6 +1647,39 @@ class _NightPhasePageState extends State<NightPhasePage> {
                         ),
                       ),
                       const SizedBox(height: 12),
+
+                      // SEER PERSISTENT JOURNAL MEMORY CARD
+                      if (role.id == RolesData.seer.id && controller.seerMemory.isNotEmpty) ...[
+                        GlassCard(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: const [
+                                  Icon(Icons.history_edu_rounded, color: Colors.purpleAccent, size: 20),
+                                  SizedBox(width: 6),
+                                  Text('سجل كشوفاتك السابقة 🔮:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.purpleAccent, fontSize: 13)),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              ...controller.seerMemory.entries.map((entry) {
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 2),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text('▫️ ${entry.key}:', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                      Text(entry.value, style: const TextStyle(fontSize: 12, color: Colors.amber)),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
 
                       if (role.id == RolesData.witch.id) ...[
                         GlassCard(
@@ -1780,7 +1821,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
 }
 
 // ============================================================================
-// 10. DAY PHASE PAGE (UNLIMITED ROUNDS & LYNCH EXECUTION)
+// 10. DAY PHASE PAGE
 // ============================================================================
 class DayPhasePage extends StatefulWidget {
   const DayPhasePage({super.key});
