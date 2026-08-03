@@ -256,7 +256,7 @@ class RoleModel {
   final Color color;
   final String strategyTip;
   final String powerLimits;
-  final bool hasNightAction;
+  final bool hasActiveAction;
 
   const RoleModel({
     required this.id,
@@ -269,7 +269,7 @@ class RoleModel {
     required this.color,
     this.strategyTip = '',
     required this.powerLimits,
-    this.hasNightAction = true,
+    this.hasActiveAction = true,
   });
 }
 
@@ -300,7 +300,7 @@ class PlayerModel {
     this.isMayor = false,
   });
 
-  void resetNightStates() {
+  void resetRoundStates() {
     isProtected = false;
     isTargetedByWolves = false;
     isTargetedBySerialKiller = false;
@@ -315,13 +315,13 @@ class RolesData {
     name: 'قروي عادي',
     icon: '🧑‍🌾',
     team: Team.villagers,
-    description: 'لا تملك قدرة خاصة ليلاً. قوتك تكمن في قوة التحليل، والمشاركة بالنقاش النهارية لتكثيف الشكوك وكشف الذئاب وإعدامهم بالتصويت.',
-    nightActionPrompt: 'أنت قروي بريء وتنام بسلام هذه الليلة 🌙',
+    description: 'قوتك تكمن في قراءة سلوك اللاعبين والمشاركة في جلسة النقاش والتصويت النهارية لإعدام المشتبه بهم.',
+    nightActionPrompt: 'أنت قروي بريء، ركّز في النقاش والتصويت لإيجاد المستذئبين!',
     nightPriority: 99,
     color: Color(0xFF10B981),
-    strategyTip: 'لاحظ من يتحدث كثيراً أو يحاول توجيه التهم بسرعة بدون أدلة؛ غالباً ما يكون مستذئباً يحاول تضليل القرية.',
-    powerLimits: '📊 القدرة: تصويت عادي بصوت واحد (1) نهار كل جولة. لا يوجد حركة ليلاً.',
-    hasNightAction: false,
+    strategyTip: 'لاحظ من يحاول توجيه الشبهات بسرعة بدون أدلة.',
+    powerLimits: '📊 القدرة: تصويت عادي بصوت واحد (1) في جلسة النقاش.',
+    hasActiveAction: false,
   );
 
   static const RoleModel seer = RoleModel(
@@ -329,12 +329,12 @@ class RolesData {
     name: 'العرّاف / المحقق',
     icon: '🔮',
     team: Team.villagers,
-    description: 'تستيقظ كل ليلة وتختار لاعباً واحداً لتكشف هويته وانتمائه السري (خير أم شر).',
-    nightActionPrompt: 'اختر لاعباً لكشف انتمائه السري:',
+    description: 'تختار لاعباً واحداً في دورك السرّي لتكشف انتمائه الحقيقي (خير أم شر).',
+    nightActionPrompt: 'اختر لاعباً لكشف انتمائه السرّي:',
     nightPriority: 2,
     color: Color(0xFF8B5CF6),
-    strategyTip: 'لا تكشف عن نفسك مبكراً حتى لا تستهدفك الذئاب، ووجّه النقاش بذكاء بناءً على معلوماتك السريّة.',
-    powerLimits: '📊 القدرة: كشف انتماء لاعب واحد (1) كل ليلة طوال بقائه حياً مع الاحتفاظ بسجل الكشوفات السابقة.',
+    strategyTip: 'وجّه النقاش بذكاء بناءً على سجل كشوفاتك المحفوظة دون فضح نفسك مبكراً.',
+    powerLimits: '📊 القدرة: كشف انتماء لاعب واحد (1) كل جولة مع حفظ السجل.',
   );
 
   static const RoleModel doctor = RoleModel(
@@ -342,11 +342,11 @@ class RolesData {
     name: 'الطبيب / الحارس',
     icon: '🩺',
     team: Team.villagers,
-    description: 'تختار لاعباً كل ليلة لحمايته من هجمات الليل. إذا هاجمت الذئاب هذا اللاعب المحمي فإنه ينجو فوراً.',
-    nightActionPrompt: 'اختر لاعباً لحمايته هذه الليلة:',
+    description: 'تختار لاعباً لحمايته من الهجمات. إذا تم استهدافه سينجو فوراً.',
+    nightActionPrompt: 'اختر لاعباً لحمايته هذه الجولة:',
     nightPriority: 1,
     color: Color(0xFF06B6D4),
-    powerLimits: '📊 القدرة: حماية لاعب واحد (1) كل ليلة (يمكنه حماية نفسه أو غيره دون حد أقصى للمرات).',
+    powerLimits: '📊 القدرة: حماية لاعب واحد (1) كل جولة (نفسك أو غيرك).',
   );
 
   static const RoleModel witch = RoleModel(
@@ -354,12 +354,12 @@ class RolesData {
     name: 'الساحرة',
     icon: '🧪',
     team: Team.villagers,
-    description: 'تملك جرعة شفاء واحدة لإنقاذ أي لاعب من الموت، وجرعة سم واحدة لقتل أي لاعب تشك به.',
+    description: 'تملك جرعة شفاء واحدة لإنقاذ لاعب، وجرعة سم واحدة لقتل لاعب تشك به.',
     nightActionPrompt: 'اختر الجرعة واللاعب المراد استخدامها عليه:',
     nightPriority: 4,
     color: Color(0xFFA855F7),
-    strategyTip: 'احتفظ بجرعة الشفاء للشخصيات القوية كالعراف أو نفسك، واستخدم السم عندما تتيقن من هوية أحد المستذئبين.',
-    powerLimits: '📊 القدرة: جرعة شفاء واحدة (1) + جرعة سم واحدة (1) فقط طوال كامل اللعبة.',
+    strategyTip: 'استخدم الشفاء بحكمة والسم عندما تتيقن من هوية المستذئب.',
+    powerLimits: '📊 القدرة: جرعة شفاء (1) + جرعة سم (1) فقط طوال اللعبة.',
   );
 
   static const RoleModel hunter = RoleModel(
@@ -367,12 +367,12 @@ class RolesData {
     name: 'الصياد',
     icon: '🏹',
     team: Team.villagers,
-    description: 'إذا تم قتلك ليلاً أو إعدامك نهاراً، يُسمح لك بإطلاق رصاصة أخيرة وأخذ لاعب تشك به للموت معك فوراً.',
-    nightActionPrompt: 'أنت تترقب في الظلام بنندقيتك 🌙',
+    description: 'إذا تم قتلك أو إعدامك، تُطلق رصاصة أخيرة وتأخذ لاعباً للموت معك.',
+    nightActionPrompt: 'أنت تترقب في الظلام بنندقيتك.',
     nightPriority: 98,
     color: Color(0xFFD97706),
-    powerLimits: '📊 القدرة: رصاصة انتقام واحدة (1) عند الموت فقط.',
-    hasNightAction: false,
+    powerLimits: '📊 القدرة: رصاصة انتقام واحدة (1) عند الموت.',
+    hasActiveAction: false,
   );
 
   static const RoleModel mayor = RoleModel(
@@ -380,12 +380,12 @@ class RolesData {
     name: 'المختار / العمدة',
     icon: '🎖️',
     team: Team.villagers,
-    description: 'صوتك في تصويت الإعدام نهاراً يُحسب بصوتين بدلاً من صوت واحد، مما يجعلك القائد المرجّح للقرية عند التعادل.',
-    nightActionPrompt: 'أنت تنام استعداداً لقيادة القرية نهاراً 🌙',
+    description: 'صوتك في جلسة تصويت الإعدام يُحسب بصوتين بدلاً من صوت واحد.',
+    nightActionPrompt: 'صوتك مرجّح بصوتين في جلسة النقاش والتصويت.',
     nightPriority: 97,
     color: Color(0xFF3B82F6),
-    powerLimits: '📊 القدرة: صوت مضاعف بقيمة صوتين (2) دائماً في تصويت النهار.',
-    hasNightAction: false,
+    powerLimits: '📊 القدرة: صوت مضاعف بقيمة صوتين (2) دائماً في التصويت.',
+    hasActiveAction: false,
   );
 
   static const RoleModel werewolf = RoleModel(
@@ -393,12 +393,12 @@ class RolesData {
     name: 'مستذئب عادي',
     icon: '🐺',
     team: Team.werewolves,
-    description: 'تستيقظ كل ليلة وتختار ضحيتك لافتراسها. كل مستذئب يحدد ضحيته الخاصة!',
-    nightActionPrompt: 'اختر الضحية التي تلتهمها كذئب هذه الليلة:',
+    description: 'تختار ضحيتك الخاصة لافتراسها وقتلها في دورك السرّي.',
+    nightActionPrompt: 'اختر الضحية التي تلتهمها في دورك السرّي:',
     nightPriority: 3,
     color: Color(0xFFEF4444),
-    strategyTip: 'تظاهر بالدفاع عن القرويين وتحدث بثقة نهاراً لتبعد الشبهات عن نفسك وقطيعك.',
-    powerLimits: '📊 القدرة: اخترا وقتل ضحية واحدة (1) خاصة بك كل ليلة.',
+    strategyTip: 'تظاهر بالدفاع عن القرويين وتحدث بثقة نهاراً لتبعد الشبهات.',
+    powerLimits: '📊 القدرة: اختيار ضحية واحدة (1) لافتراسها كل جولة.',
   );
 
   static const RoleModel alphaWolf = RoleModel(
@@ -406,11 +406,11 @@ class RolesData {
     name: 'الذئب الألفا / الزعيم',
     icon: '👑',
     team: Team.werewolves,
-    description: 'قائد المستذئبين، يختار ضحيته ليلاً ويظهر كقروي بريء عند فحص العراف له.',
+    description: 'قائد المستذئبين، يقتنص ضحيته وتظهر كقروي بريء عند فحص العراف لك.',
     nightActionPrompt: 'اختر ضحيتك كزعيم للمستذئبين:',
     nightPriority: 3,
     color: Color(0xFFB91C1C),
-    powerLimits: '📊 القدرة: قتل ضحية ليلية + التخفي كبريء من فحص العراف دائماً.',
+    powerLimits: '📊 القدرة: افتراس ضحية + التخفي كبريء من فحص العراف.',
   );
 
   static const RoleModel wolfSeer = RoleModel(
@@ -418,11 +418,11 @@ class RolesData {
     name: 'الذئب الخائن / الجاسوس',
     icon: '👁️',
     team: Team.werewolves,
-    description: 'تستيقظ ليلاً لتكشف بطاقة دور أحد القرويين وتساعد القطيع في قنص الأدوار المهمة كالعراف والطبيب.',
+    description: 'تستيقظ لتكشف بطاقة دور أحد القرويين وتساعد القطيع في قنص الأدوار المهمة.',
     nightActionPrompt: 'اختر لاعباً لتكشف دوره للذئاب:',
     nightPriority: 2,
     color: Color(0xFFDC2626),
-    powerLimits: '📊 القدرة: كشف دور كامل للاعب واحد (1) كل ليلة.',
+    powerLimits: '📊 القدرة: كشف دور كامل للاعب واحد (1) كل جولة.',
   );
 
   static const RoleModel wolfCub = RoleModel(
@@ -430,11 +430,11 @@ class RolesData {
     name: 'الذئب الصغير',
     icon: '🐾',
     team: Team.werewolves,
-    description: 'إذا تم إعدامك نهاراً، يغضب القطيع وينتقم بأخذ ضحيتين اثنتين في الليلة التالية.',
+    description: 'إذا تم إعدامك في جلسة النقاش، ينتقم القطيع بأخذ ضحيتين في الجولة التالية.',
     nightActionPrompt: 'اختر ضحيتك كذئب صغير:',
     nightPriority: 3,
     color: Color(0xFFF97316),
-    powerLimits: '📊 القدرة: قتال ليلي + يمنح القطيع ضحيتين اثنتين (2) إذا تم إعدامه نهاراً.',
+    powerLimits: '📊 القدرة: افتراس ضحية + يمنح ضحيتين إذا تم إعدامه.',
   );
 
   static const RoleModel fool = RoleModel(
@@ -442,13 +442,13 @@ class RolesData {
     name: 'الجوكر / المجنون',
     icon: '🤡',
     team: Team.neutral,
-    description: 'هدفك الخفي المستقل أن تقنع القرويين بإعدامك نهاراً! إذا تم إعدامك تفوز بمفردك فوراً باللعبة.',
-    nightActionPrompt: 'تفكّر في خطتك الخبيثة لإقناعهم بإعدامك 🌙',
+    description: 'هدفك أن تقنع اللاعبين بإعدامك في التصويت لتفوز بمفردك فوراً باللعبة!',
+    nightActionPrompt: 'تفكّر في خطتك لإقناعهم بإعدامك في جلسة التصويت.',
     nightPriority: 96,
     color: Color(0xFFEC4899),
-    strategyTip: 'تصرف بشبهة بسيطة وغير مباشرة ليدور النقاش حولك ويصوت الجميع لإعدامك.',
-    powerLimits: '📊 القدرة: فوز فوري باللعبة بمجرد نجاح القرويين في إعدامه مرة واحدة (1) نهاراً.',
-    hasNightAction: false,
+    strategyTip: 'تصرف بشبهة خفيفة ليدور النقاش حولك ويصوت الجميع لإعدامك.',
+    powerLimits: '📊 القدرة: فوز فوري بمجرد إعدامه في التصويت.',
+    hasActiveAction: false,
   );
 
   static const RoleModel serialKiller = RoleModel(
@@ -456,11 +456,11 @@ class RolesData {
     name: 'القاتل المتسلسل',
     icon: '🔪',
     team: Team.neutral,
-    description: 'تلعب بمفردك ضد الجميع! تستيقظ كل ليلة وتقتل لاعباً. تفوز باللعبة إذا بقيت آخر شخص حي بالقرية.',
-    nightActionPrompt: 'اختر ضحيتك المستقلة لهذه الليلة:',
+    description: 'تقتل لاعباً في كل جولة لتفوز بمفردك كآخر ناجٍ في القرية.',
+    nightActionPrompt: 'اختر ضحيتك المستقلة لهذه الجولة:',
     nightPriority: 5,
     color: Color(0xFF6B7280),
-    powerLimits: '📊 القدرة: قتل ضحية واحدة (1) كل ليلة مستقل عن بقية الفرق.',
+    powerLimits: '📊 القدرة: قتل ضحية واحدة (1) كل جولة مستقل عن الجميع.',
   );
 
   static const RoleModel cupid = RoleModel(
@@ -468,11 +468,11 @@ class RolesData {
     name: 'كيوبيد / العاشقان',
     icon: '💘',
     team: Team.neutral,
-    description: 'في الليلة الأولى فقط، تختار لاعبين ليرتبطا بالحب الأبدي. إذا مات أحدهما يموت الآخر فوراً حزناً عليه.',
+    description: 'في الجولة الأولى فقط، تختار لاعبين ليرتبطا بالحب. إذا مات أحدهما يموت الآخر فوراً.',
     nightActionPrompt: 'اختر لاعبين لتربطهما بعاطفة الحب الأبدي:',
     nightPriority: 0,
     color: Color(0xFFF43F5E),
-    powerLimits: '📊 القدرة: ربط حبيبين اثنين (2) مرة واحدة فقط في الليلة الأولى.',
+    powerLimits: '📊 القدرة: ربط حبيبين اثنتين (2) مرة واحدة في الجولة الأولى.',
   );
 
   static List<RoleModel> get allRoles => [
@@ -493,19 +493,17 @@ class RolesData {
 }
 
 // ============================================================================
-// 5. GAME STATE CONTROLLER (WITH SEER MEMORY PERSISTENCE)
+// 5. GAME STATE CONTROLLER (SEAMLESS PASS & PLAY ROUND ENGINE)
 // ============================================================================
 class GameController extends ChangeNotifier {
   List<PlayerModel> _players = [];
   List<RoleModel> _selectedRoles = [];
-  int _currentNightPlayerIndex = 0;
-  List<PlayerModel> _activeNightPlayers = [];
+  int _currentTurnIndex = 0;
+  List<PlayerModel> _activeRoundPlayers = [];
   int _roundCount = 1;
 
-  // PERSISTENT SEER INSPECTION JOURNAL (Player Name -> Result String)
   final Map<String, String> _seerMemory = {};
-
-  List<String> _morningEvents = [];
+  List<String> _roundEvents = [];
   String? _winnerTeamMessage;
   bool _isGameOver = false;
 
@@ -519,25 +517,24 @@ class GameController extends ChangeNotifier {
   PlayerModel? serialKillerTarget;
   PlayerModel? witchPoisonTarget;
   PlayerModel? witchHealTarget;
-  PlayerModel? seerCheckedPlayer;
 
   List<PlayerModel> get players => _players;
   List<PlayerModel> get alivePlayers => _players.where((p) => p.isAlive).toList();
   List<RoleModel> get selectedRoles => _selectedRoles;
-  List<String> get morningEvents => _morningEvents;
+  List<String> get roundEvents => _roundEvents;
   String? get winnerTeamMessage => _winnerTeamMessage;
   bool get isGameOver => _isGameOver;
-  int get currentNightPlayerIndex => _currentNightPlayerIndex;
-  List<PlayerModel> get activeNightPlayers => _activeNightPlayers;
+  int get currentTurnIndex => _currentTurnIndex;
+  List<PlayerModel> get activeRoundPlayers => _activeRoundPlayers;
   int get roundCount => _roundCount;
   Map<String, String> get seerMemory => _seerMemory;
 
-  PlayerModel get currentNightPlayer => _activeNightPlayers[_currentNightPlayerIndex];
+  PlayerModel get currentTurnPlayer => _activeRoundPlayers[_currentTurnIndex];
 
   void setupGame(List<String> playerNames, List<RoleModel> chosenRoles) {
     _selectedRoles = List.from(chosenRoles);
     _players.clear();
-    _morningEvents.clear();
+    _roundEvents.clear();
     _seerMemory.clear();
     _isGameOver = false;
     _winnerTeamMessage = null;
@@ -566,26 +563,26 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void startNightPhase() {
-    _currentNightPlayerIndex = 0;
+  void startRoundTurns() {
+    _currentTurnIndex = 0;
     doctorTarget = null;
     wolfTargets.clear();
     serialKillerTarget = null;
     witchPoisonTarget = null;
     witchHealTarget = null;
-    seerCheckedPlayer = null;
 
     for (var p in _players) {
-      p.resetNightStates();
+      p.resetRoundStates();
     }
 
-    _activeNightPlayers = List.from(alivePlayers);
+    // STRICT SEQUENTIAL PLAYER NAMES (Ahmed -> Homam -> Mohammad -> Hassan ...)
+    _activeRoundPlayers = List.from(alivePlayers);
     notifyListeners();
   }
 
-  bool nextNightPlayerStep() {
-    if (_currentNightPlayerIndex < _activeNightPlayers.length - 1) {
-      _currentNightPlayerIndex++;
+  bool nextPlayerTurn() {
+    if (_currentTurnIndex < _activeRoundPlayers.length - 1) {
+      _currentTurnIndex++;
       notifyListeners();
       return true;
     }
@@ -627,39 +624,42 @@ class GameController extends ChangeNotifier {
     cupidActionDone = true;
   }
 
-  void resolveNightPhase() {
-    _morningEvents.clear();
-    List<PlayerModel> killedTonight = [];
+  void resolveRoundActions() {
+    _roundEvents.clear();
+    List<PlayerModel> killedInRound = [];
 
+    // Werewolves attack
     for (var wTarget in wolfTargets) {
       if (wTarget.isProtected || wTarget.isHealedByWitch) {
-        _morningEvents.add('🛡️ نجحت حماية الطبيب أو علاج الساحرة في إنقاذ إحدى ضحايا المستذئبين!');
+        _roundEvents.add('🛡️ نجحت حماية الطبيب أو علاج الساحرة في إنقاذ إحدى ضحايا المستذئبين!');
       } else {
-        if (!killedTonight.contains(wTarget)) {
-          killedTonight.add(wTarget);
+        if (!killedInRound.contains(wTarget)) {
+          killedInRound.add(wTarget);
         }
       }
     }
 
+    // Serial Killer attack
     if (serialKillerTarget != null && serialKillerTarget!.isTargetedBySerialKiller) {
       if (serialKillerTarget!.isProtected || serialKillerTarget!.isHealedByWitch) {
-        _morningEvents.add('🛡️ نجحت حماية الطبيب/الساحرة في صّد هجوم القاتل المتسلسل!');
+        _roundEvents.add('🛡️ نجحت حماية الطبيب/الساحرة في صّد هجوم القاتل المتسلسل!');
       } else {
-        if (!killedTonight.contains(serialKillerTarget)) {
-          killedTonight.add(serialKillerTarget!);
+        if (!killedInRound.contains(serialKillerTarget)) {
+          killedInRound.add(serialKillerTarget!);
         }
       }
     }
 
+    // Witch Poison
     if (witchPoisonTarget != null && witchPoisonTarget!.isTargetedByWitchPoison) {
-      if (!killedTonight.contains(witchPoisonTarget)) {
-        killedTonight.add(witchPoisonTarget!);
+      if (!killedInRound.contains(witchPoisonTarget)) {
+        killedInRound.add(witchPoisonTarget!);
       }
     }
 
-    for (var victim in killedTonight) {
+    for (var victim in killedInRound) {
       victim.isAlive = false;
-      _morningEvents.add('❌ للأسف، قُتل اللاعب [${victim.name}] (${victim.role.name}) خلال الليل!');
+      _roundEvents.add('❌ للأسف، سقط اللاعب [${victim.name}] (${victim.role.name}) في هذه الجولة!');
 
       if (victim.isLinkedByCupid) {
         var partner = _players.firstWhere(
@@ -668,13 +668,13 @@ class GameController extends ChangeNotifier {
         );
         if (partner.id != victim.id && partner.isAlive) {
           partner.isAlive = false;
-          _morningEvents.add('💔 قُتل اللاعب [${partner.name}] فوراً حزناً على مقتل شريكه الحبيب!');
+          _roundEvents.add('💔 مات اللاعب [${partner.name}] فوراً حزناً على مقتل شريكه الحبيب!');
         }
       }
     }
 
-    if (killedTonight.isEmpty && _morningEvents.isEmpty) {
-      _morningEvents.add('✨ صباح آمن ومشرق! لم يمت أي لاعب خلال هذه الليلة.');
+    if (killedInRound.isEmpty && _roundEvents.isEmpty) {
+      _roundEvents.add('✨ جولة آمنة ومشرقة! لم يمت أي لاعب في تمرير الحركات.');
     }
 
     wolfCubRevengeActive = false;
@@ -684,8 +684,8 @@ class GameController extends ChangeNotifier {
 
   void executePlayer(PlayerModel suspect) {
     suspect.isAlive = false;
-    _morningEvents.clear();
-    _morningEvents.add('⚖️ قرر القرويون إعدام [${suspect.name}] وكانت هويته الحقيقية: (${suspect.role.name} ${suspect.role.icon}).');
+    _roundEvents.clear();
+    _roundEvents.add('⚖️ قرر اللاعبون إعدام [${suspect.name}] وكانت هويته الحقيقية: (${suspect.role.name} ${suspect.role.icon}).');
 
     if (suspect.role.id == RolesData.fool.id) {
       _isGameOver = true;
@@ -696,7 +696,7 @@ class GameController extends ChangeNotifier {
 
     if (suspect.role.id == RolesData.wolfCub.id) {
       wolfCubRevengeActive = true;
-      _morningEvents.add('🐾 غضب قطيع المستذئبين لمقتل الذئب الصغير! سينتقمون بأخذ ضحيتين الليلة القادمة.');
+      _roundEvents.add('🐾 غضب قطيع المستذئبين لمقتل الذئب الصغير! سينتقمون بأخذ ضحيتين الجولة القادمة.');
     }
 
     if (suspect.isLinkedByCupid) {
@@ -706,7 +706,7 @@ class GameController extends ChangeNotifier {
       );
       if (partner.id != suspect.id && partner.isAlive) {
         partner.isAlive = false;
-        _morningEvents.add('💔 مات اللاعب [${partner.name}] فوراً حزناً على إعدام شريكه!');
+        _roundEvents.add('💔 مات اللاعب [${partner.name}] فوراً حزناً على إعدام شريكه!');
       }
     }
 
@@ -1039,7 +1039,7 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
 }
 
 // ============================================================================
-// 7. ROLES GUIDE / ENCYCLOPEDIA PAGE
+// 7. ROLES GUIDE PAGE
 // ============================================================================
 class RolesGuidePage extends StatefulWidget {
   const RolesGuidePage({super.key});
@@ -1136,7 +1136,7 @@ class _RolesGuidePageState extends State<RolesGuidePage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('أولوية الاستيقاظ ليلاً: #${role.nightPriority}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text('أولوية الحركة: #${role.nightPriority}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                   ElevatedButton(
                     onPressed: () => Navigator.pop(context),
                     style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
@@ -1275,10 +1275,10 @@ class _RoleRevealPageState extends State<RoleRevealPage> {
         _isRoleRevealed = false;
       });
     } else {
-      context.read<GameController>().startNightPhase();
+      context.read<GameController>().startRoundTurns();
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const NightPhasePage()),
+        MaterialPageRoute(builder: (context) => const TurnPhasePage()),
       );
     }
   }
@@ -1370,7 +1370,7 @@ class _RoleRevealPageState extends State<RoleRevealPage> {
                 CustomButton(text: 'اضغط لرؤية دورك السرّي 👁️', onPressed: () => setState(() => _isRoleRevealed = true))
               else
                 CustomButton(
-                  text: _currentPlayerIndex < players.length - 1 ? 'إخفاء وتمرير الهاتف للاعب التالي 📲' : 'إخفاء وبدء مرحلة الليل الأولى 🌙',
+                  text: _currentPlayerIndex < players.length - 1 ? 'إخفاء وتمرير الهاتف للاعب التالي 📲' : 'إخفاء وبدء جولة اللعب بالتمرير 📲',
                   isSecondary: true,
                   onPressed: () => _nextPlayer(players.length),
                 ),
@@ -1383,24 +1383,24 @@ class _RoleRevealPageState extends State<RoleRevealPage> {
 }
 
 // ============================================================================
-// 9. NIGHT PHASE PAGE (PERSISTENT SEER JOURNAL MEMORY DISPLAY)
+// 9. STREAMLINED PASS & PLAY TURN PAGE (No Night/Day Theme, Just Seamless Flow)
 // ============================================================================
-class NightPhasePage extends StatefulWidget {
-  const NightPhasePage({super.key});
+class TurnPhasePage extends StatefulWidget {
+  const TurnPhasePage({super.key});
 
   @override
-  State<NightPhasePage> createState() => _NightPhasePageState();
+  State<TurnPhasePage> createState() => _TurnPhasePageState();
 }
 
-class _NightPhasePageState extends State<NightPhasePage> {
+class _TurnPhasePageState extends State<TurnPhasePage> {
   PlayerModel? _selectedTarget;
   PlayerModel? _secondSelectedTarget;
   bool _witchUseHeal = false;
   bool _witchUsePoison = false;
-  bool _isTurnHandedOver = false;
+  bool _isHandoverAccepted = false;
 
   void _onConfirmAction(GameController controller) {
-    final currentPlayer = controller.currentNightPlayer;
+    final currentPlayer = controller.currentTurnPlayer;
     final role = currentPlayer.role;
 
     if (role.id == RolesData.doctor.id && _selectedTarget != null) {
@@ -1435,15 +1435,15 @@ class _NightPhasePageState extends State<NightPhasePage> {
       _secondSelectedTarget = null;
       _witchUseHeal = false;
       _witchUsePoison = false;
-      _isTurnHandedOver = false;
+      _isHandoverAccepted = false;
     });
 
-    bool hasNext = controller.nextNightPlayerStep();
+    bool hasNext = controller.nextPlayerTurn();
     if (!hasNext) {
-      controller.resolveNightPhase();
+      controller.resolveRoundActions();
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const DayPhasePage()),
+        MaterialPageRoute(builder: (context) => const DiscussionAndVotePage()),
       );
     }
   }
@@ -1494,7 +1494,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    const Text('✨ تم حفظ هذه النتيجة في سجل كشوفاتك الخاصة لليالي القادمة!', style: TextStyle(fontSize: 11, color: Colors.amber)),
+                    const Text('✨ تم حفظ هذه النتيجة في سجل كشوفاتك الخاصة!', style: TextStyle(fontSize: 11, color: Colors.amber)),
                   ],
                 ],
               ),
@@ -1577,13 +1577,13 @@ class _NightPhasePageState extends State<NightPhasePage> {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<GameController>();
-    final currentPlayer = controller.currentNightPlayer;
+    final currentPlayer = controller.currentTurnPlayer;
     final role = currentPlayer.role;
     final alivePlayers = controller.alivePlayers;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('مرحلة الليل 🌙 (${controller.currentNightPlayerIndex + 1}/${controller.activeNightPlayers.length})'),
+        title: Text('تمرير الأدوار 📲 (${controller.currentTurnIndex + 1}/${controller.activeRoundPlayers.length})'),
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
@@ -1591,7 +1591,8 @@ class _NightPhasePageState extends State<NightPhasePage> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
-            child: !_isTurnHandedOver
+            child: !_isHandoverAccepted
+                // 1. SIMPLE STREAMLINED HANDOVER CARD
                 ? Center(
                     key: ValueKey('pass_${currentPlayer.id}'),
                     child: GlassCard(
@@ -1606,24 +1607,19 @@ class _NightPhasePageState extends State<NightPhasePage> {
                           const SizedBox(height: 6),
                           Text(
                             currentPlayer.name,
-                            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.amber),
+                            style: const TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: Colors.amber),
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            '🔒 تأكد أن بقية اللاعبين يُغمضون أعينهم تماماً!',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 14, color: Colors.white70),
-                          ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 20),
                           CustomButton(
-                            text: 'أنا [${currentPlayer.name}] - استلام الجهاز والبدء 👁️',
-                            onPressed: () => setState(() => _isTurnHandedOver = true),
+                            text: 'أنا [${currentPlayer.name}] - متابعة 👁️',
+                            onPressed: () => setState(() => _isHandoverAccepted = true),
                           ),
                         ],
                       ),
                     ),
                   )
+                // 2. PLAYER REVEAL & ACTION SELECTION SCREEN
                 : Column(
                     key: ValueKey('action_${currentPlayer.id}'),
                     children: [
@@ -1637,7 +1633,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('دورك: ${role.name}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: role.color)),
+                                  Text('دورك السرّي: ${role.name}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: role.color)),
                                   const SizedBox(height: 2),
                                   Text(role.nightActionPrompt, style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryDark)),
                                 ],
@@ -1648,7 +1644,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
                       ),
                       const SizedBox(height: 12),
 
-                      // SEER PERSISTENT JOURNAL MEMORY CARD
+                      // SEER JOURNAL MEMORY CARD
                       if (role.id == RolesData.seer.id && controller.seerMemory.isNotEmpty) ...[
                         GlassCard(
                           padding: const EdgeInsets.all(12),
@@ -1691,7 +1687,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
                                 selected: _witchUseHeal,
                                 disabledColor: Colors.grey.withValues(alpha: 0.2),
                                 selectedColor: Colors.green.withValues(alpha: 0.3),
-                                label: Text(controller.witchHasHealPotion ? 'جرعة الشفاء (1) 🧪' : 'تم استهلاك الشفاء (0) ❌'),
+                                label: Text(controller.witchHasHealPotion ? 'جرعة الشفاء (1) 🧪' : 'استُهلك الشفاء ❌'),
                                 onSelected: controller.witchHasHealPotion
                                     ? (val) => setState(() {
                                           _witchUseHeal = val;
@@ -1703,7 +1699,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
                                 selected: _witchUsePoison,
                                 disabledColor: Colors.grey.withValues(alpha: 0.2),
                                 selectedColor: Colors.purple.withValues(alpha: 0.3),
-                                label: Text(controller.witchHasPoisonPotion ? 'جرعة السم (1) ☠️' : 'تم استهلاك السم (0) ❌'),
+                                label: Text(controller.witchHasPoisonPotion ? 'جرعة السم (1) ☠️' : 'استُهلك السم ❌'),
                                 onSelected: controller.witchHasPoisonPotion
                                     ? (val) => setState(() {
                                           _witchUsePoison = val;
@@ -1717,7 +1713,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
                         const SizedBox(height: 12),
                       ],
 
-                      if (!role.hasNightAction && role.id != RolesData.witch.id)
+                      if (!role.hasActiveAction && role.id != RolesData.witch.id)
                         Expanded(
                           child: Center(
                             child: GlassCard(
@@ -1725,10 +1721,10 @@ class _NightPhasePageState extends State<NightPhasePage> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: const [
-                                  Icon(Icons.bedtime_rounded, size: 50, color: AppColors.secondary),
+                                  Icon(Icons.check_circle_outline_rounded, size: 50, color: AppColors.secondary),
                                   SizedBox(height: 12),
                                   Text(
-                                    'أنت تنام بسلام ومطئمن هذه الليلة! اضغط أدناه لإخفاء الهاتف وتمريره.',
+                                    'ليس لديك خيار خاص للتنفيذ الآن. اضغط التالي لتمرير الموبايل للاعب التالي!',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(fontSize: 15, height: 1.4),
                                   ),
@@ -1760,7 +1756,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
                                   title: Text(player.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                                   subtitle: role.id == RolesData.witch.id
                                       ? Text(
-                                          isSelected ? 'هدف الشفاء 🧪 (اضغط للإلغاء)' : isSecondSelected ? 'هدف السم ☠️ (اضغط للإلغاء)' : 'اضغط للتحديد',
+                                          isSelected ? 'هدف الشفاء 🧪' : isSecondSelected ? 'هدف السم ☠️' : 'اضغط للتحديد',
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: isSelected ? Colors.green : isSecondSelected ? Colors.purpleAccent : Colors.grey,
@@ -1806,9 +1802,7 @@ class _NightPhasePageState extends State<NightPhasePage> {
                         ),
                       const SizedBox(height: 12),
                       CustomButton(
-                        text: (role.hasNightAction && (_selectedTarget != null || _secondSelectedTarget != null))
-                            ? 'تأكيد القرار وتمرير الهاتف 📲'
-                            : 'إنهاء ونوم 😴',
+                        text: 'التالي 📲',
                         onPressed: () => _onConfirmAction(controller),
                       ),
                     ],
@@ -1821,16 +1815,16 @@ class _NightPhasePageState extends State<NightPhasePage> {
 }
 
 // ============================================================================
-// 10. DAY PHASE PAGE
+// 10. DISCUSSION & VOTING PAGE (AFTER ALL TURNS COMPLETE)
 // ============================================================================
-class DayPhasePage extends StatefulWidget {
-  const DayPhasePage({super.key});
+class DiscussionAndVotePage extends StatefulWidget {
+  const DiscussionAndVotePage({super.key});
 
   @override
-  State<DayPhasePage> createState() => _DayPhasePageState();
+  State<DiscussionAndVotePage> createState() => _DiscussionAndVotePageState();
 }
 
-class _DayPhasePageState extends State<DayPhasePage> {
+class _DiscussionAndVotePageState extends State<DiscussionAndVotePage> {
   PlayerModel? _selectedSuspect;
   Timer? _timer;
   int _secondsRemaining = 120;
@@ -1873,19 +1867,19 @@ class _DayPhasePageState extends State<DayPhasePage> {
         SnackBar(content: Text('تم إعدام [${suspect.name}] وكانت هويته (${suspect.role.name})!'), behavior: SnackBarBehavior.floating),
       );
 
-      controller.startNightPhase();
+      controller.startRoundTurns();
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const NightPhasePage()),
+        MaterialPageRoute(builder: (context) => const TurnPhasePage()),
       );
     }
   }
 
   void _skipLynch(GameController controller) {
-    controller.startNightPhase();
+    controller.startRoundTurns();
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const NightPhasePage()),
+      MaterialPageRoute(builder: (context) => const TurnPhasePage()),
     );
   }
 
@@ -1907,7 +1901,7 @@ class _DayPhasePageState extends State<DayPhasePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('حلول النهار والنقاش (الجولة ${controller.roundCount}) ☀️'),
+        title: Text('جلسة النقاش والتصويت (الجولة ${controller.roundCount}) 🗣️'),
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
@@ -1924,7 +1918,7 @@ class _DayPhasePageState extends State<DayPhasePage> {
                       children: const [
                         Icon(Icons.timer_outlined, color: Colors.amber),
                         SizedBox(width: 8),
-                        Text('وقت النقاش:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('وقت النقاش الجماعي:', style: TextStyle(fontWeight: FontWeight.bold)),
                       ],
                     ),
                     Text('$minutes:$seconds', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.amber)),
@@ -1937,9 +1931,9 @@ class _DayPhasePageState extends State<DayPhasePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('أحداث الليلة الماضية 📜', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                    const Text('نتائج الجولة الماضية 📜', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 6),
-                    ...controller.morningEvents.map(
+                    ...controller.roundEvents.map(
                       (e) => Padding(
                         padding: const EdgeInsets.symmetric(vertical: 2),
                         child: Text(e, style: const TextStyle(fontSize: 13, height: 1.3)),
