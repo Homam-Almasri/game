@@ -493,7 +493,7 @@ class RolesData {
 }
 
 // ============================================================================
-// 5. GAME STATE CONTROLLER (SEAMLESS PASS & PLAY ROUND ENGINE)
+// 5. GAME STATE CONTROLLER (ROLE-ANONYMOUS EVENT LOGS & PRIVACY ENFORCEMENT)
 // ============================================================================
 class GameController extends ChangeNotifier {
   List<PlayerModel> _players = [];
@@ -575,7 +575,6 @@ class GameController extends ChangeNotifier {
       p.resetRoundStates();
     }
 
-    // STRICT SEQUENTIAL PLAYER NAMES (Ahmed -> Homam -> Mohammad -> Hassan ...)
     _activeRoundPlayers = List.from(alivePlayers);
     notifyListeners();
   }
@@ -626,58 +625,66 @@ class GameController extends ChangeNotifier {
 
   void resolveRoundActions() {
     _roundEvents.clear();
-    List<PlayerModel> killedInRound = [];
 
-    // Werewolves attack
+    // 1. Resolve Werewolves Attack(s) - ANONYMOUS ROLE LOGGING
     for (var wTarget in wolfTargets) {
       if (wTarget.isProtected || wTarget.isHealedByWitch) {
-        _roundEvents.add('🛡️ نجحت حماية الطبيب أو علاج الساحرة في إنقاذ إحدى ضحايا المستذئبين!');
+        _roundEvents.add('🛡️ نجحت حماية الطبيب/علاج الساحرة في إنقاذ [${wTarget.name}] من المستذئب!');
       } else {
-        if (!killedInRound.contains(wTarget)) {
-          killedInRound.add(wTarget);
-        }
+        wTarget.isAlive = false;
+        _roundEvents.add('🐺 افتُرس اللاعب [${wTarget.name}] على يد المستذئب!');
+        _checkHunterAndCupidRevenge(wTarget);
       }
     }
 
-    // Serial Killer attack
+    // 2. Resolve Serial Killer Attack
     if (serialKillerTarget != null && serialKillerTarget!.isTargetedBySerialKiller) {
       if (serialKillerTarget!.isProtected || serialKillerTarget!.isHealedByWitch) {
-        _roundEvents.add('🛡️ نجحت حماية الطبيب/الساحرة في صّد هجوم القاتل المتسلسل!');
+        _roundEvents.add('🛡️ نجحت حماية الطبيب في إنقاذ [${serialKillerTarget!.name}] من هجوم القاتل المتسلسل!');
       } else {
-        if (!killedInRound.contains(serialKillerTarget)) {
-          killedInRound.add(serialKillerTarget!);
+        if (serialKillerTarget!.isAlive) {
+          serialKillerTarget!.isAlive = false;
+          _roundEvents.add('🔪 تسبب هجوم القاتل المتسلسل بمقتل اللاعب [${serialKillerTarget!.name}]!');
+          _checkHunterAndCupidRevenge(serialKillerTarget!);
         }
       }
     }
 
-    // Witch Poison
+    // 3. Resolve Witch Poison
     if (witchPoisonTarget != null && witchPoisonTarget!.isTargetedByWitchPoison) {
-      if (!killedInRound.contains(witchPoisonTarget)) {
-        killedInRound.add(witchPoisonTarget!);
+      if (witchPoisonTarget!.isAlive) {
+        witchPoisonTarget!.isAlive = false;
+        _roundEvents.add('☠️ تسببت جرعة سم الساحرة بمقتل اللاعب [${witchPoisonTarget!.name}]!');
+        _checkHunterAndCupidRevenge(witchPoisonTarget!);
       }
     }
 
-    for (var victim in killedInRound) {
-      victim.isAlive = false;
-      _roundEvents.add('❌ للأسف، سقط اللاعب [${victim.name}] (${victim.role.name}) في هذه الجولة!');
-
-      if (victim.isLinkedByCupid) {
-        var partner = _players.firstWhere(
-          (p) => p.isLinkedByCupid && p.id != victim.id && p.isAlive,
-          orElse: () => victim,
-        );
-        if (partner.id != victim.id && partner.isAlive) {
-          partner.isAlive = false;
-          _roundEvents.add('💔 مات اللاعب [${partner.name}] فوراً حزناً على مقتل شريكه الحبيب!');
-        }
-      }
-    }
-
-    if (killedInRound.isEmpty && _roundEvents.isEmpty) {
-      _roundEvents.add('✨ جولة آمنة ومشرقة! لم يمت أي لاعب في تمرير الحركات.');
+    if (_roundEvents.isEmpty) {
+      _roundEvents.add('✨ جولة آمنة ومشرقة! لم يتعرض أي لاعب للأذى.');
     }
 
     wolfCubRevengeActive = false;
+    checkWinConditions();
+    notifyListeners();
+  }
+
+  void _checkHunterAndCupidRevenge(PlayerModel victim) {
+    if (victim.isLinkedByCupid) {
+      var partner = _players.firstWhere(
+        (p) => p.isLinkedByCupid && p.id != victim.id && p.isAlive,
+        orElse: () => victim,
+      );
+      if (partner.id != victim.id && partner.isAlive) {
+        partner.isAlive = false;
+        _roundEvents.add('💔 مات اللاعب [${partner.name}] فوراً حزناً على مقتل شريكه العاشق!');
+      }
+    }
+  }
+
+  void triggerHunterShot(PlayerModel hunter, PlayerModel revengeTarget) {
+    revengeTarget.isAlive = false;
+    _roundEvents.add('🏹 أطلق الصياد رصاصة انتقامه وأخذ [${revengeTarget.name}] للموت معه!');
+    _checkHunterAndCupidRevenge(revengeTarget);
     checkWinConditions();
     notifyListeners();
   }
@@ -699,17 +706,7 @@ class GameController extends ChangeNotifier {
       _roundEvents.add('🐾 غضب قطيع المستذئبين لمقتل الذئب الصغير! سينتقمون بأخذ ضحيتين الجولة القادمة.');
     }
 
-    if (suspect.isLinkedByCupid) {
-      var partner = _players.firstWhere(
-        (p) => p.isLinkedByCupid && p.id != suspect.id && p.isAlive,
-        orElse: () => suspect,
-      );
-      if (partner.id != suspect.id && partner.isAlive) {
-        partner.isAlive = false;
-        _roundEvents.add('💔 مات اللاعب [${partner.name}] فوراً حزناً على إعدام شريكه!');
-      }
-    }
-
+    _checkHunterAndCupidRevenge(suspect);
     _roundCount++;
     checkWinConditions();
     notifyListeners();
@@ -1383,7 +1380,7 @@ class _RoleRevealPageState extends State<RoleRevealPage> {
 }
 
 // ============================================================================
-// 9. STREAMLINED PASS & PLAY TURN PAGE (No Night/Day Theme, Just Seamless Flow)
+// 9. STREAMLINED PASS & PLAY TURN PAGE
 // ============================================================================
 class TurnPhasePage extends StatefulWidget {
   const TurnPhasePage({super.key});
@@ -1592,7 +1589,6 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
             child: !_isHandoverAccepted
-                // 1. SIMPLE STREAMLINED HANDOVER CARD
                 ? Center(
                     key: ValueKey('pass_${currentPlayer.id}'),
                     child: GlassCard(
@@ -1619,7 +1615,6 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
                       ),
                     ),
                   )
-                // 2. PLAYER REVEAL & ACTION SELECTION SCREEN
                 : Column(
                     key: ValueKey('action_${currentPlayer.id}'),
                     children: [
@@ -1644,7 +1639,6 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
                       ),
                       const SizedBox(height: 12),
 
-                      // SEER JOURNAL MEMORY CARD
                       if (role.id == RolesData.seer.id && controller.seerMemory.isNotEmpty) ...[
                         GlassCard(
                           padding: const EdgeInsets.all(12),
@@ -1815,7 +1809,7 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
 }
 
 // ============================================================================
-// 10. DISCUSSION & VOTING PAGE (AFTER ALL TURNS COMPLETE)
+// 10. DISCUSSION & VOTING PAGE (WITH HUNTER REVENGE SUPPORT)
 // ============================================================================
 class DiscussionAndVotePage extends StatefulWidget {
   const DiscussionAndVotePage({super.key});
@@ -1857,16 +1851,78 @@ class _DiscussionAndVotePageState extends State<DiscussionAndVotePage> {
     final suspect = _selectedSuspect!;
     controller.executePlayer(suspect);
 
+    if (suspect.role.id == RolesData.hunter.id && !controller.isGameOver) {
+      _showHunterShotDialog(context, controller, suspect);
+    } else {
+      _finishLynchTurn(controller, suspect);
+    }
+  }
+
+  void _showHunterShotDialog(BuildContext context, GameController controller, PlayerModel hunter) {
+    PlayerModel? hunterTarget;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppColors.darkSurface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Text('🏹 رصاصة انتقام الصياد الأخيرة!', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('تم إعدام الصياد [${hunter.name}]! تتيح له قدرته إطلاق رصاصة حية وأخذ لاعب للموت معه:'),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 200,
+                    width: double.maxFinite,
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: controller.alivePlayers.length,
+                      itemBuilder: (context, index) {
+                        final target = controller.alivePlayers[index];
+                        final isSelected = hunterTarget?.id == target.id;
+
+                        return ListTile(
+                          title: Text(target.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          trailing: isSelected ? const Icon(Icons.gps_fixed_rounded, color: Colors.red) : null,
+                          onTap: () => setDialogState(() => hunterTarget = target),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: hunterTarget != null
+                      ? () {
+                          controller.triggerHunterShot(hunter, hunterTarget!);
+                          Navigator.pop(context);
+                          _finishLynchTurn(controller, hunter);
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: const Text('إطلاق الرصاصة 🎯', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _finishLynchTurn(GameController controller, PlayerModel suspect) {
     if (controller.isGameOver) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const GameOverPage()),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تم إعدام [${suspect.name}] وكانت هويته (${suspect.role.name})!'), behavior: SnackBarBehavior.floating),
-      );
-
       controller.startRoundTurns();
       Navigator.pushReplacement(
         context,
