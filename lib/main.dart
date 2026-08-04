@@ -493,7 +493,7 @@ class RolesData {
 }
 
 // ============================================================================
-// 5. GAME STATE CONTROLLER (ROLE-ANONYMOUS EVENT LOGS & PRIVACY ENFORCEMENT)
+// 5. GAME STATE CONTROLLER
 // ============================================================================
 class GameController extends ChangeNotifier {
   List<PlayerModel> _players = [];
@@ -626,7 +626,7 @@ class GameController extends ChangeNotifier {
   void resolveRoundActions() {
     _roundEvents.clear();
 
-    // 1. Resolve Werewolves Attack(s) - ANONYMOUS ROLE LOGGING
+    // 1. Resolve Werewolves Attack(s)
     for (var wTarget in wolfTargets) {
       if (wTarget.isProtected || wTarget.isHealedByWitch) {
         _roundEvents.add('🛡️ نجحت حماية الطبيب/علاج الساحرة في إنقاذ [${wTarget.name}] من المستذئب!');
@@ -745,7 +745,7 @@ class GameController extends ChangeNotifier {
 }
 
 // ============================================================================
-// 6. PLAYER SETUP PAGE
+// 6. PLAYER SETUP PAGE (DIRECT GAME START - NO INITIAL REVEAL PAGE)
 // ============================================================================
 class PlayerSetupPage extends StatefulWidget {
   const PlayerSetupPage({super.key});
@@ -840,11 +840,14 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
       return;
     }
 
-    context.read<GameController>().setupGame(_playerNames, _selectedRoles);
+    final controller = context.read<GameController>();
+    controller.setupGame(_playerNames, _selectedRoles);
+    controller.startRoundTurns();
 
+    // DIRECTLY GO TO PASS & PLAY TURNS (SKIP INITIAL REVEAL PAGE!)
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const RoleRevealPage()),
+      MaterialPageRoute(builder: (context) => const TurnPhasePage()),
     );
   }
 
@@ -1252,135 +1255,7 @@ class _RolesGuidePageState extends State<RolesGuidePage> {
 }
 
 // ============================================================================
-// 8. ROLE REVEAL PAGE
-// ============================================================================
-class RoleRevealPage extends StatefulWidget {
-  const RoleRevealPage({super.key});
-
-  @override
-  State<RoleRevealPage> createState() => _RoleRevealPageState();
-}
-
-class _RoleRevealPageState extends State<RoleRevealPage> {
-  int _currentPlayerIndex = 0;
-  bool _isRoleRevealed = false;
-
-  void _nextPlayer(int totalPlayers) {
-    if (_currentPlayerIndex < totalPlayers - 1) {
-      setState(() {
-        _currentPlayerIndex++;
-        _isRoleRevealed = false;
-      });
-    } else {
-      context.read<GameController>().startRoundTurns();
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const TurnPhasePage()),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = context.watch<GameController>();
-    final players = controller.players;
-    final currentPlayer = players[_currentPlayerIndex];
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('كشف الأوراق السرية (${_currentPlayerIndex + 1}/${players.length})'),
-        automaticallyImplyLeading: false,
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-          child: Column(
-            children: [
-              const Text('مرّر الهاتف إلى:', style: TextStyle(fontSize: 16, color: AppColors.textSecondaryDark)),
-              const SizedBox(height: 4),
-              Text(currentPlayer.name, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.amber)),
-              const SizedBox(height: 16),
-              Expanded(
-                child: GlassCard(
-                  borderRadius: 24,
-                  padding: const EdgeInsets.all(20),
-                  child: Center(
-                    child: SingleChildScrollView(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        child: _isRoleRevealed
-                            ? Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                key: const ValueKey('revealed'),
-                                children: [
-                                  Text(currentPlayer.role.icon, style: const TextStyle(fontSize: 70)),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    currentPlayer.role.name,
-                                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: currentPlayer.role.color),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: currentPlayer.role.color.withValues(alpha: 0.2),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      'الفريق: ${currentPlayer.role.team.name}',
-                                      style: TextStyle(fontWeight: FontWeight.bold, color: currentPlayer.role.color),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.amber.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      currentPlayer.role.powerLimits,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.amber),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  Text(currentPlayer.role.description, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, height: 1.4)),
-                                ],
-                              )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                key: const ValueKey('hidden'),
-                                children: const [
-                                  Icon(Icons.lock_outline_rounded, size: 70, color: AppColors.primary),
-                                  SizedBox(height: 16),
-                                  Text('تأكد أن اللاعبين الآخرين لا ينظرون لشاشتك!', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, height: 1.4)),
-                                ],
-                              ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              if (!_isRoleRevealed)
-                CustomButton(text: 'اضغط لرؤية دورك السرّي 👁️', onPressed: () => setState(() => _isRoleRevealed = true))
-              else
-                CustomButton(
-                  text: _currentPlayerIndex < players.length - 1 ? 'إخفاء وتمرير الهاتف للاعب التالي 📲' : 'إخفاء وبدء جولة اللعب بالتمرير 📲',
-                  isSecondary: true,
-                  onPressed: () => _nextPlayer(players.length),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// 9. STREAMLINED PASS & PLAY TURN PAGE
+// 8. STREAMLINED PASS & PLAY TURN PAGE (NO SELF-TARGETING FOR WOLVES)
 // ============================================================================
 class TurnPhasePage extends StatefulWidget {
   const TurnPhasePage({super.key});
@@ -1576,7 +1451,14 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
     final controller = context.watch<GameController>();
     final currentPlayer = controller.currentTurnPlayer;
     final role = currentPlayer.role;
-    final alivePlayers = controller.alivePlayers;
+
+    // FILTER TARGET LIST: Werewolves, Serial Killers, Wolf Seers CANNOT TARGET THEMSELVES!
+    final selectableTargets = controller.alivePlayers.where((p) {
+      if (role.team == Team.werewolves || role.id == RolesData.serialKiller.id || role.id == RolesData.wolfSeer.id) {
+        return p.id != currentPlayer.id; // Remove current player from victim list!
+      }
+      return true; // Doctor and others can target self if allowed
+    }).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -1730,9 +1612,9 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
                       else
                         Expanded(
                           child: ListView.builder(
-                            itemCount: alivePlayers.length,
+                            itemCount: selectableTargets.length,
                             itemBuilder: (context, index) {
-                              final player = alivePlayers[index];
+                              final player = selectableTargets[index];
                               final isSelected = _selectedTarget?.id == player.id;
                               final isSecondSelected = _secondSelectedTarget?.id == player.id;
 
@@ -1809,7 +1691,7 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
 }
 
 // ============================================================================
-// 10. DISCUSSION & VOTING PAGE (WITH HUNTER REVENGE SUPPORT)
+// 9. DISCUSSION & VOTING PAGE (100% SECRET ROLE-FREE VOTING LIST!)
 // ============================================================================
 class DiscussionAndVotePage extends StatefulWidget {
   const DiscussionAndVotePage({super.key});
@@ -2018,8 +1900,8 @@ class _DiscussionAndVotePageState extends State<DiscussionAndVotePage> {
                         side: BorderSide(color: isSelected ? Colors.red : Colors.white10),
                       ),
                       child: ListTile(
-                        leading: Text(player.role.icon, style: const TextStyle(fontSize: 24)),
-                        title: Text(player.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        // NO ROLE ICONS OR TITLES IN VOTE SELECTION FOR 100% SECRECY!
+                        title: Text(player.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         subtitle: isSelected ? const Text('محدد للإعدام (اضغط لإلغاء التحديد)', style: TextStyle(fontSize: 12, color: Colors.redAccent)) : null,
                         trailing: isSelected ? const Icon(Icons.gavel_rounded, color: Colors.red) : null,
                         onTap: () {
@@ -2066,7 +1948,7 @@ class _DiscussionAndVotePageState extends State<DiscussionAndVotePage> {
 }
 
 // ============================================================================
-// 11. GAME OVER PAGE
+// 10. GAME OVER PAGE
 // ============================================================================
 class GameOverPage extends StatelessWidget {
   const GameOverPage({super.key});
