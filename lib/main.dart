@@ -745,7 +745,7 @@ class GameController extends ChangeNotifier {
 }
 
 // ============================================================================
-// 6. PLAYER SETUP PAGE (DIRECT GAME START - NO INITIAL REVEAL PAGE)
+// 6. PLAYER SETUP PAGE
 // ============================================================================
 class PlayerSetupPage extends StatefulWidget {
   const PlayerSetupPage({super.key});
@@ -844,7 +844,6 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
     controller.setupGame(_playerNames, _selectedRoles);
     controller.startRoundTurns();
 
-    // DIRECTLY GO TO PASS & PLAY TURNS (SKIP INITIAL REVEAL PAGE!)
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const TurnPhasePage()),
@@ -1255,7 +1254,7 @@ class _RolesGuidePageState extends State<RolesGuidePage> {
 }
 
 // ============================================================================
-// 8. STREAMLINED PASS & PLAY TURN PAGE (NO SELF-TARGETING FOR WOLVES)
+// 8. STREAMLINED PASS & PLAY TURN PAGE (SEER SELF & PREVIOUS TARGET FILTERING)
 // ============================================================================
 class TurnPhasePage extends StatefulWidget {
   const TurnPhasePage({super.key});
@@ -1452,12 +1451,20 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
     final currentPlayer = controller.currentTurnPlayer;
     final role = currentPlayer.role;
 
-    // FILTER TARGET LIST: Werewolves, Serial Killers, Wolf Seers CANNOT TARGET THEMSELVES!
+    // FILTER TARGET LIST:
+    // 1. Werewolves, Serial Killers, Wolf Seers CANNOT TARGET THEMSELVES!
+    // 2. Seer CANNOT INSPECT HIMSELF AND CANNOT RE-INSPECT PREVIOUSLY INSPECTED PLAYERS!
     final selectableTargets = controller.alivePlayers.where((p) {
+      if (role.id == RolesData.seer.id) {
+        // Seer cannot inspect self AND cannot re-inspect someone already in seerMemory!
+        if (p.id == currentPlayer.id) return false;
+        if (controller.seerMemory.containsKey(p.name)) return false;
+        return true;
+      }
       if (role.team == Team.werewolves || role.id == RolesData.serialKiller.id || role.id == RolesData.wolfSeer.id) {
         return p.id != currentPlayer.id; // Remove current player from victim list!
       }
-      return true; // Doctor and others can target self if allowed
+      return true; // Doctor can protect self if allowed
     }).toList();
 
     return Scaffold(
@@ -1691,7 +1698,7 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
 }
 
 // ============================================================================
-// 9. DISCUSSION & VOTING PAGE (100% SECRET ROLE-FREE VOTING LIST!)
+// 9. DISCUSSION & VOTING PAGE
 // ============================================================================
 class DiscussionAndVotePage extends StatefulWidget {
   const DiscussionAndVotePage({super.key});
@@ -1900,7 +1907,6 @@ class _DiscussionAndVotePageState extends State<DiscussionAndVotePage> {
                         side: BorderSide(color: isSelected ? Colors.red : Colors.white10),
                       ),
                       child: ListTile(
-                        // NO ROLE ICONS OR TITLES IN VOTE SELECTION FOR 100% SECRECY!
                         title: Text(player.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         subtitle: isSelected ? const Text('محدد للإعدام (اضغط لإلغاء التحديد)', style: TextStyle(fontSize: 12, color: Colors.redAccent)) : null,
                         trailing: isSelected ? const Icon(Icons.gavel_rounded, color: Colors.red) : null,
