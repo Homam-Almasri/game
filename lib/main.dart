@@ -1254,7 +1254,7 @@ class _RolesGuidePageState extends State<RolesGuidePage> {
 }
 
 // ============================================================================
-// 8. STREAMLINED PASS & PLAY TURN PAGE (SEER SELF & PREVIOUS TARGET FILTERING)
+// 8. STREAMLINED PASS & PLAY TURN PAGE
 // ============================================================================
 class TurnPhasePage extends StatefulWidget {
   const TurnPhasePage({super.key});
@@ -1451,20 +1451,16 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
     final currentPlayer = controller.currentTurnPlayer;
     final role = currentPlayer.role;
 
-    // FILTER TARGET LIST:
-    // 1. Werewolves, Serial Killers, Wolf Seers CANNOT TARGET THEMSELVES!
-    // 2. Seer CANNOT INSPECT HIMSELF AND CANNOT RE-INSPECT PREVIOUSLY INSPECTED PLAYERS!
     final selectableTargets = controller.alivePlayers.where((p) {
       if (role.id == RolesData.seer.id) {
-        // Seer cannot inspect self AND cannot re-inspect someone already in seerMemory!
         if (p.id == currentPlayer.id) return false;
         if (controller.seerMemory.containsKey(p.name)) return false;
         return true;
       }
       if (role.team == Team.werewolves || role.id == RolesData.serialKiller.id || role.id == RolesData.wolfSeer.id) {
-        return p.id != currentPlayer.id; // Remove current player from victim list!
+        return p.id != currentPlayer.id;
       }
-      return true; // Doctor can protect self if allowed
+      return true;
     }).toList();
 
     return Scaffold(
@@ -1698,7 +1694,7 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
 }
 
 // ============================================================================
-// 9. DISCUSSION & VOTING PAGE
+// 9. DISCUSSION & VOTING PAGE (ROUND RESULTS CARD REMOVED AS REQUESTED)
 // ============================================================================
 class DiscussionAndVotePage extends StatefulWidget {
   const DiscussionAndVotePage({super.key});
@@ -1867,23 +1863,6 @@ class _DiscussionAndVotePageState extends State<DiscussionAndVotePage> {
                       ],
                     ),
                     Text('$minutes:$seconds', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.amber)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              GlassCard(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('نتائج الجولة الماضية 📜', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    ...controller.roundEvents.map(
-                      (e) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(e, style: const TextStyle(fontSize: 13, height: 1.3)),
-                      ),
-                    ),
                   ],
                 ),
               ),
