@@ -241,7 +241,7 @@ class GlassCard extends StatelessWidget {
 }
 
 // ============================================================================
-// 4. DOMAIN MODELS & ROLES DATA
+// 4. DOMAIN MODELS & ALL 22 ROLES DATA
 // ============================================================================
 enum Team { villagers, werewolves, neutral }
 
@@ -286,6 +286,12 @@ class PlayerModel {
   bool isLinkedByCupid;
   bool isMayor;
 
+  // NEW ROLES STATES
+  bool isHypnotized;
+  bool isReflectProtected;
+  bool isKidnapped;
+  String? twinPartnerId;
+
   PlayerModel({
     required this.id,
     required this.name,
@@ -298,6 +304,10 @@ class PlayerModel {
     this.isHealedByWitch = false,
     this.isLinkedByCupid = false,
     this.isMayor = false,
+    this.isHypnotized = false,
+    this.isReflectProtected = false,
+    this.isKidnapped = false,
+    this.twinPartnerId,
   });
 
   void resetRoundStates() {
@@ -306,6 +316,7 @@ class PlayerModel {
     isTargetedBySerialKiller = false;
     isTargetedByWitchPoison = false;
     isHealedByWitch = false;
+    isReflectProtected = false;
   }
 }
 
@@ -475,6 +486,119 @@ class RolesData {
     powerLimits: '📊 القدرة: ربط حبيبين اثنتين (2) مرة واحدة في الجولة الأولى.',
   );
 
+  // ==========================================================================
+  // NEW INNOVATIVE ROLES (5 + 4 = 9 NEW ROLES)
+  // ==========================================================================
+  static const RoleModel assassin = RoleModel(
+    id: 'assassin',
+    name: 'السفّاح المقنّع',
+    icon: '🗡️',
+    team: Team.villagers,
+    description: 'تملك ضربة رهان مسمومة واحدة طوال اللعبة. إن قتلت مستذئباً يموت، وإن قتلت بريئاً تموت معه حسرةً!',
+    nightActionPrompt: 'اختر مشتبهاً به لضربه بخنجرك المسموم (مرة واحدة طوال اللعبة):',
+    nightPriority: 6,
+    color: Color(0xFF991B1B),
+    powerLimits: '📊 القدرة: ضربة رهان مسمومة واحدة (1) فقط طوال كامل اللعبة.',
+  );
+
+  static const RoleModel hypnotist = RoleModel(
+    id: 'hypnotist',
+    name: 'المنوّم المغناطيسي',
+    icon: '💤',
+    team: Team.villagers,
+    description: 'تضع لاعباً في غيبوبة سحرية كل جولة لشل حركته وتصويته تماماً في الجولة التالية.',
+    nightActionPrompt: 'اختر لاعباً لتنويمه وشل حركته وتصويته الجولة القادمة:',
+    nightPriority: 1,
+    color: Color(0xFF6366F1),
+    powerLimits: '📊 القدرة: تنويم لاعب واحد (1) كل جولة لشل حركته وتصويته.',
+  );
+
+  static const RoleModel disguisedWolf = RoleModel(
+    id: 'disguised_wolf',
+    name: 'الذئب المتنكر',
+    icon: '🎭',
+    team: Team.werewolves,
+    description: 'تستطيع سرقة وتجسيد هوية وقدرة أي لاعب ميت لمرة واحدة وتضليل القرية.',
+    nightActionPrompt: 'اختر لاعباً ميتاً لسرقة وتجسيد هويته (مرة واحدة طوال اللعبة):',
+    nightPriority: 3,
+    color: Color(0xFFDC2626),
+    powerLimits: '📊 القدرة: سرقة وتجسيد هوية لاعب ميت مرة واحدة (1) باللعبة.',
+  );
+
+  static const RoleModel godfather = RoleModel(
+    id: 'godfather',
+    name: 'العرّاب (صاحب النفوذ)',
+    icon: '🕴️',
+    team: Team.werewolves,
+    description: 'قائد العصابة، يملك زر الحصانة الدبلوماسية لإلغاء قرار إعدامه في التصويت لمرة واحدة!',
+    nightActionPrompt: 'أنت تنام بسلام وتراقب القرية بنفوذك.',
+    nightPriority: 95,
+    color: Color(0xFF1E1B4B),
+    powerLimits: '📊 القدرة: حصانة دبلوماسية لإلغاء وتخطي الإعدام نهاراً مرة واحدة (1).',
+    hasActiveAction: false,
+  );
+
+  static const RoleModel exorcist = RoleModel(
+    id: 'exorcist',
+    name: 'المعالج الارتدادي',
+    icon: '✨',
+    team: Team.villagers,
+    description: 'تضع درعاً ارتدادياً على لاعب. إذا هاجمه المستذئبون يرتد الهجوم ويموت المستذئب المهاجم بدلاً منه!',
+    nightActionPrompt: 'اختر لاعباً لحمايته بدرع ارتدادي قاتل للمستذئبين:',
+    nightPriority: 1,
+    color: Color(0xFFF59E0B),
+    powerLimits: '📊 القدرة: درع ارتدادي يقتل الذئب المهاجم بدلاً من الضحية.',
+  );
+
+  static const RoleModel twinWolf = RoleModel(
+    id: 'twin_wolf',
+    name: 'الذئب التوأم',
+    icon: '👥',
+    team: Team.werewolves,
+    description: 'تربط توأماً في الجولة الأولى وتظهر كبريء عند فحصك. إذا مت يتحول توأمك لذئب بدلاً منك!',
+    nightActionPrompt: 'اختر لاعباً في الجولة الأولى لتربطه كتوأم لك:',
+    nightPriority: 0,
+    color: Color(0xFFB91C1C),
+    powerLimits: '📊 القدرة: ربط توأم في الجولة 1 + تحويل التوأم لذئب فور موتك.',
+  );
+
+  static const RoleModel corruptJudge = RoleModel(
+    id: 'corrupt_judge',
+    name: 'القاضي الفاسد',
+    icon: '⚖️',
+    team: Team.neutral,
+    description: 'تستطيع استخدام زر تغيير الحكم في التصويت لتحويل الإعدام فوراً إلى لاعب آخر من اختيارك!',
+    nightActionPrompt: 'تخطط لاستعمال سلطتك القضائية الفاسدة في التصويت.',
+    nightPriority: 94,
+    color: Color(0xFF0F766E),
+    powerLimits: '📊 القدرة: تحويل ونقض حكم الإعدام لشخص آخر مرة واحدة (1).',
+    hasActiveAction: false,
+  );
+
+  static const RoleModel merchant = RoleModel(
+    id: 'merchant',
+    name: 'التاجر (الصرّاف السري)',
+    icon: '💰',
+    team: Team.villagers,
+    description: 'توزع 3 هدايا سريّة على اللاعبين (درع حماية 🛡️، رصاصة انتقام 🎯، أو كشف انتماء 🔮).',
+    nightActionPrompt: 'اختر الهدية واللاعب المراد إهدائه إياها سراً:',
+    nightPriority: 1,
+    color: Color(0xFFEAB308),
+    powerLimits: '📊 القدرة: إهداء 3 هدايا سريّة (حماية 🛡️، رصاصة 🎯، أو كشف 🔮).',
+  );
+
+  static const RoleModel abductorWolf = RoleModel(
+    id: 'abductor_wolf',
+    name: 'الذئب الخاطف',
+    icon: '🕸️',
+    team: Team.werewolves,
+    description: 'تستطيع خطف واحتجاز لاعب في زنزانة سريّة لمدة جولة كاملة لمرة واحدة باللعبة.',
+    nightActionPrompt: 'اختر لاعباً لخطفه واحتجازه زنزانتك الخفية (مرة واحدة):',
+    nightPriority: 2,
+    color: Color(0xFF881337),
+    powerLimits: '📊 القدرة: خطف واحتجاز لاعب في زنزانة سريّة لمدة جولة كاملة مرة واحدة (1).',
+  );
+
   static List<RoleModel> get allRoles => [
         villager,
         seer,
@@ -489,11 +613,20 @@ class RolesData {
         fool,
         serialKiller,
         cupid,
+        assassin,
+        hypnotist,
+        disguisedWolf,
+        godfather,
+        exorcist,
+        twinWolf,
+        corruptJudge,
+        merchant,
+        abductorWolf,
       ];
 }
 
 // ============================================================================
-// 5. GAME STATE CONTROLLER
+// 5. GAME STATE CONTROLLER (ENGINE WITH 22 ROLES SUPPORT)
 // ============================================================================
 class GameController extends ChangeNotifier {
   List<PlayerModel> _players = [];
@@ -509,14 +642,24 @@ class GameController extends ChangeNotifier {
 
   bool witchHasHealPotion = true;
   bool witchHasPoisonPotion = true;
+  bool assassinHasStrike = true;
+  bool disguisedWolfHasDisguise = true;
+  bool godfatherHasVeto = true;
+  bool judgeHasOverride = true;
+  bool abductorHasKidnap = true;
+  int merchantGiftsRemaining = 3;
+
   bool cupidActionDone = false;
   bool wolfCubRevengeActive = false;
+  bool twinWolfLinked = false;
 
   PlayerModel? doctorTarget;
+  PlayerModel? exorcistTarget;
   List<PlayerModel> wolfTargets = [];
   PlayerModel? serialKillerTarget;
   PlayerModel? witchPoisonTarget;
   PlayerModel? witchHealTarget;
+  PlayerModel? assassinTarget;
 
   List<PlayerModel> get players => _players;
   List<PlayerModel> get alivePlayers => _players.where((p) => p.isAlive).toList();
@@ -539,10 +682,19 @@ class GameController extends ChangeNotifier {
     _isGameOver = false;
     _winnerTeamMessage = null;
     _roundCount = 1;
+
     witchHasHealPotion = true;
     witchHasPoisonPotion = true;
+    assassinHasStrike = true;
+    disguisedWolfHasDisguise = true;
+    godfatherHasVeto = true;
+    judgeHasOverride = true;
+    abductorHasKidnap = true;
+    merchantGiftsRemaining = 3;
+
     cupidActionDone = false;
     wolfCubRevengeActive = false;
+    twinWolfLinked = false;
 
     List<RoleModel> shuffledRoles = List.from(_selectedRoles)..shuffle(Random());
 
@@ -566,16 +718,19 @@ class GameController extends ChangeNotifier {
   void startRoundTurns() {
     _currentTurnIndex = 0;
     doctorTarget = null;
+    exorcistTarget = null;
     wolfTargets.clear();
     serialKillerTarget = null;
     witchPoisonTarget = null;
     witchHealTarget = null;
+    assassinTarget = null;
 
     for (var p in _players) {
       p.resetRoundStates();
+      if (p.isKidnapped) p.isKidnapped = false; // Release kidnapped player after 1 round!
     }
 
-    _activeRoundPlayers = List.from(alivePlayers);
+    _activeRoundPlayers = List.from(alivePlayers.where((p) => !p.isKidnapped));
     notifyListeners();
   }
 
@@ -591,6 +746,11 @@ class GameController extends ChangeNotifier {
   void setDoctorTarget(PlayerModel target) {
     doctorTarget = target;
     target.isProtected = true;
+  }
+
+  void setExorcistTarget(PlayerModel target) {
+    exorcistTarget = target;
+    target.isReflectProtected = true;
   }
 
   void addWolfTarget(PlayerModel target) {
@@ -617,6 +777,25 @@ class GameController extends ChangeNotifier {
     witchHasHealPotion = false;
   }
 
+  void setAssassinTarget(PlayerModel assassinPlayer, PlayerModel target) {
+    assassinTarget = target;
+    assassinHasStrike = false;
+  }
+
+  void setHypnotistTarget(PlayerModel target) {
+    target.isHypnotized = true;
+  }
+
+  void setAbductorTarget(PlayerModel target) {
+    target.isKidnapped = true;
+    abductorHasKidnap = false;
+  }
+
+  void linkTwinWolf(PlayerModel twinWolfPlayer, PlayerModel target) {
+    twinWolfPlayer.twinPartnerId = target.id;
+    twinWolfLinked = true;
+  }
+
   void linkLovers(PlayerModel p1, PlayerModel p2) {
     p1.isLinkedByCupid = true;
     p2.isLinkedByCupid = true;
@@ -626,18 +805,41 @@ class GameController extends ChangeNotifier {
   void resolveRoundActions() {
     _roundEvents.clear();
 
-    // 1. Resolve Werewolves Attack(s)
+    // 1. Resolve Exorcist Reflection / Doctor Protection / Werewolves Attack
     for (var wTarget in wolfTargets) {
-      if (wTarget.isProtected || wTarget.isHealedByWitch) {
+      if (wTarget.isReflectProtected) {
+        var aliveWolfList = alivePlayers.where((p) => p.role.team == Team.werewolves).toList();
+        if (aliveWolfList.isNotEmpty) {
+          var wolfToDie = aliveWolfList.first;
+          wolfToDie.isAlive = false;
+          _roundEvents.add('✨ ارتدت هجمة المستذئب بفضل المعالج الارتدادي وقتلت المستذئب المهاجم بدلاً من [${wTarget.name}]!');
+        }
+      } else if (wTarget.isProtected || wTarget.isHealedByWitch) {
         _roundEvents.add('🛡️ نجحت حماية الطبيب/علاج الساحرة في إنقاذ [${wTarget.name}] من المستذئب!');
       } else {
         wTarget.isAlive = false;
         _roundEvents.add('🐺 افتُرس اللاعب [${wTarget.name}] على يد المستذئب!');
-        _checkHunterAndCupidRevenge(wTarget);
+        _checkHunterAndCupidAndTwinRevenge(wTarget);
       }
     }
 
-    // 2. Resolve Serial Killer Attack
+    // 2. Resolve Assassin Strike
+    if (assassinTarget != null) {
+      var assassin = _players.firstWhere((p) => p.role.id == RolesData.assassin.id, orElse: () => _players.first);
+      if (assassinTarget!.role.team == Team.werewolves) {
+        assassinTarget!.isAlive = false;
+        _roundEvents.add('🗡️ نجح السفّاح المقنّع في أصابة وتصفية المستذئب [${assassinTarget!.name}]!');
+        _checkHunterAndCupidAndTwinRevenge(assassinTarget!);
+      } else {
+        assassinTarget!.isAlive = false;
+        assassin.isAlive = false;
+        _roundEvents.add('💀 أخطأ السفّاح المقنّع وقتل بريئاً [${assassinTarget!.name}]، فمات السفّاح فوراً حسرةً معه!');
+        _checkHunterAndCupidAndTwinRevenge(assassinTarget!);
+        _checkHunterAndCupidAndTwinRevenge(assassin);
+      }
+    }
+
+    // 3. Resolve Serial Killer Attack
     if (serialKillerTarget != null && serialKillerTarget!.isTargetedBySerialKiller) {
       if (serialKillerTarget!.isProtected || serialKillerTarget!.isHealedByWitch) {
         _roundEvents.add('🛡️ نجحت حماية الطبيب في إنقاذ [${serialKillerTarget!.name}] من هجوم القاتل المتسلسل!');
@@ -645,17 +847,17 @@ class GameController extends ChangeNotifier {
         if (serialKillerTarget!.isAlive) {
           serialKillerTarget!.isAlive = false;
           _roundEvents.add('🔪 تسبب هجوم القاتل المتسلسل بمقتل اللاعب [${serialKillerTarget!.name}]!');
-          _checkHunterAndCupidRevenge(serialKillerTarget!);
+          _checkHunterAndCupidAndTwinRevenge(serialKillerTarget!);
         }
       }
     }
 
-    // 3. Resolve Witch Poison
+    // 4. Resolve Witch Poison
     if (witchPoisonTarget != null && witchPoisonTarget!.isTargetedByWitchPoison) {
       if (witchPoisonTarget!.isAlive) {
         witchPoisonTarget!.isAlive = false;
         _roundEvents.add('☠️ تسببت جرعة سم الساحرة بمقتل اللاعب [${witchPoisonTarget!.name}]!');
-        _checkHunterAndCupidRevenge(witchPoisonTarget!);
+        _checkHunterAndCupidAndTwinRevenge(witchPoisonTarget!);
       }
     }
 
@@ -668,7 +870,16 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _checkHunterAndCupidRevenge(PlayerModel victim) {
+  void _checkHunterAndCupidAndTwinRevenge(PlayerModel victim) {
+    // Twin Wolf conversion
+    if (victim.role.id == RolesData.twinWolf.id && victim.twinPartnerId != null) {
+      var partner = _players.firstWhere((p) => p.id == victim.twinPartnerId, orElse: () => victim);
+      if (partner.id != victim.id && partner.isAlive) {
+        partner.role = RolesData.werewolf; // Secretly convert to Werewolf!
+        _roundEvents.add('👥 تحول اللاعب [${partner.name}] سراً إلى مستذئب ثاراً لمقتل توأمه!');
+      }
+    }
+
     if (victim.isLinkedByCupid) {
       var partner = _players.firstWhere(
         (p) => p.isLinkedByCupid && p.id != victim.id && p.isAlive,
@@ -684,7 +895,7 @@ class GameController extends ChangeNotifier {
   void triggerHunterShot(PlayerModel hunter, PlayerModel revengeTarget) {
     revengeTarget.isAlive = false;
     _roundEvents.add('🏹 أطلق الصياد رصاصة انتقامه وأخذ [${revengeTarget.name}] للموت معه!');
-    _checkHunterAndCupidRevenge(revengeTarget);
+    _checkHunterAndCupidAndTwinRevenge(revengeTarget);
     checkWinConditions();
     notifyListeners();
   }
@@ -706,7 +917,7 @@ class GameController extends ChangeNotifier {
       _roundEvents.add('🐾 غضب قطيع المستذئبين لمقتل الذئب الصغير! سينتقمون بأخذ ضحيتين الجولة القادمة.');
     }
 
-    _checkHunterAndCupidRevenge(suspect);
+    _checkHunterAndCupidAndTwinRevenge(suspect);
     _roundCount++;
     checkWinConditions();
     notifyListeners();
@@ -949,7 +1160,7 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
                   }),
                 ),
                 const SizedBox(height: 20),
-                const Text('اختر وتكرار الأدوار المشاركة في الجولة:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('اختر وتكرار الأدوار (${RolesData.allRoles.length} دور متوفر):', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
                 GridView.builder(
                   shrinkWrap: true,
@@ -1038,7 +1249,7 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
 }
 
 // ============================================================================
-// 7. ROLES GUIDE PAGE
+// 7. ROLES GUIDE PAGE (SHOWING ALL 22 ROLES)
 // ============================================================================
 class RolesGuidePage extends StatefulWidget {
   const RolesGuidePage({super.key});
@@ -1276,6 +1487,16 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
 
     if (role.id == RolesData.doctor.id && _selectedTarget != null) {
       controller.setDoctorTarget(_selectedTarget!);
+    } else if (role.id == RolesData.exorcist.id && _selectedTarget != null) {
+      controller.setExorcistTarget(_selectedTarget!);
+    } else if (role.id == RolesData.hypnotist.id && _selectedTarget != null) {
+      controller.setHypnotistTarget(_selectedTarget!);
+    } else if (role.id == RolesData.abductorWolf.id && _selectedTarget != null) {
+      controller.setAbductorTarget(_selectedTarget!);
+    } else if (role.id == RolesData.twinWolf.id && _selectedTarget != null && !controller.twinWolfLinked) {
+      controller.linkTwinWolf(currentPlayer, _selectedTarget!);
+    } else if (role.id == RolesData.assassin.id && _selectedTarget != null && controller.assassinHasStrike) {
+      controller.setAssassinTarget(currentPlayer, _selectedTarget!);
     } else if (role.team == Team.werewolves && _selectedTarget != null) {
       controller.addWolfTarget(_selectedTarget!);
     } else if (role.id == RolesData.serialKiller.id && _selectedTarget != null) {
@@ -1325,7 +1546,7 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
       barrierDismissible: false,
       builder: (context) {
         bool isRevealed = false;
-        final isWolf = target.role.team == Team.werewolves && target.role.id != RolesData.alphaWolf.id;
+        final isWolf = target.role.team == Team.werewolves && target.role.id != RolesData.alphaWolf.id && target.role.id != RolesData.twinWolf.id;
         final resultText = isWolf ? 'فريق المستذئبين / الشر 🐺' : 'فريق القرويين / الخير 🛡️';
 
         return StatefulBuilder(
@@ -1457,7 +1678,7 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
         if (controller.seerMemory.containsKey(p.name)) return false;
         return true;
       }
-      if (role.team == Team.werewolves || role.id == RolesData.serialKiller.id || role.id == RolesData.wolfSeer.id) {
+      if (role.team == Team.werewolves || role.id == RolesData.serialKiller.id || role.id == RolesData.wolfSeer.id || role.id == RolesData.assassin.id) {
         return p.id != currentPlayer.id;
       }
       return true;
@@ -1694,7 +1915,7 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
 }
 
 // ============================================================================
-// 9. DISCUSSION & VOTING PAGE (ROUND RESULTS CARD REMOVED AS REQUESTED)
+// 9. DISCUSSION & VOTING PAGE (WITH GODFATHER VETO & JUDGE OVERRIDE)
 // ============================================================================
 class DiscussionAndVotePage extends StatefulWidget {
   const DiscussionAndVotePage({super.key});
@@ -1734,6 +1955,14 @@ class _DiscussionAndVotePageState extends State<DiscussionAndVotePage> {
     if (_selectedSuspect == null) return;
 
     final suspect = _selectedSuspect!;
+
+    // Godfather Veto Check
+    if (suspect.role.id == RolesData.godfather.id && controller.godfatherHasVeto) {
+      controller.godfatherHasVeto = false;
+      _showGodfatherVetoDialog(context, controller, suspect);
+      return;
+    }
+
     controller.executePlayer(suspect);
 
     if (suspect.role.id == RolesData.hunter.id && !controller.isGameOver) {
@@ -1741,6 +1970,36 @@ class _DiscussionAndVotePageState extends State<DiscussionAndVotePage> {
     } else {
       _finishLynchTurn(controller, suspect);
     }
+  }
+
+  void _showGodfatherVetoDialog(BuildContext context, GameController controller, PlayerModel godfather) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppColors.darkSurface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('🕴️ نفوذ العرّاب (الحصانة الدبلوماسية)!', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('استخدم العرّاب [${godfather.name}] نفوذه وحصانته الدبلوماسية، وتم إلغاء قرار الإعدام وتجاوزه بنجاح!'),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _skipLynch(controller);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('متابعة اللعب 📲', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showHunterShotDialog(BuildContext context, GameController controller, PlayerModel hunter) {
