@@ -622,7 +622,7 @@ class RolesData {
 }
 
 // ============================================================================
-// 5. GAME STATE CONTROLLER (HIGH-SECRECY MINIMAL LOGGING ENGINE)
+// 5. GAME STATE CONTROLLER
 // ============================================================================
 class GameController extends ChangeNotifier {
   List<PlayerModel> _players = [];
@@ -659,6 +659,7 @@ class GameController extends ChangeNotifier {
 
   List<PlayerModel> get players => _players;
   List<PlayerModel> get alivePlayers => _players.where((p) => p.isAlive).toList();
+  List<PlayerModel> get aliveWerewolves => alivePlayers.where((p) => p.role.team == Team.werewolves).toList();
   List<RoleModel> get selectedRoles => _selectedRoles;
   List<String> get roundEvents => _roundEvents;
   String? get winnerTeamMessage => _winnerTeamMessage;
@@ -798,9 +799,6 @@ class GameController extends ChangeNotifier {
     cupidActionDone = true;
   }
 
-  // ==========================================================================
-  // ULTRA-SECRET MINIMAL ROUND RESOLUTION (DOES NOT PROVE OR REVEAL ANY ROLE!)
-  // ==========================================================================
   void resolveRoundActions() {
     _roundEvents.clear();
     List<PlayerModel> deadVictims = [];
@@ -866,7 +864,6 @@ class GameController extends ChangeNotifier {
       }
     }
 
-    // STRICT SECRECY LOGGING: DO NOT MENTION WHO PROTECTED WHOM OR WHY NO ONE DIED!
     if (deadVictims.isEmpty) {
       _roundEvents.add('✨ استيقظت القرية بشمس مشرقة دون وقوع أي ضحايا هذه الجولة!');
     } else {
@@ -1483,7 +1480,7 @@ class _RolesGuidePageState extends State<RolesGuidePage> {
 }
 
 // ============================================================================
-// 8. STREAMLINED PASS & PLAY TURN PAGE
+// 8. STREAMLINED PASS & PLAY TURN PAGE (PACK MEMBERS VISIBILITY FOR WEREWOLVES)
 // ============================================================================
 class TurnPhasePage extends StatefulWidget {
   const TurnPhasePage({super.key});
@@ -1690,13 +1687,18 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
     final currentPlayer = controller.currentTurnPlayer;
     final role = currentPlayer.role;
 
+    // FILTER TARGET LIST:
+    // WEREWOLVES CANNOT TARGET FELLOW WEREWOLVES! (PROTECT WEREWOLVES FROM ATTACKING EACH OTHER!)
     final selectableTargets = controller.alivePlayers.where((p) {
       if (role.id == RolesData.seer.id) {
         if (p.id == currentPlayer.id) return false;
         if (controller.seerMemory.containsKey(p.name)) return false;
         return true;
       }
-      if (role.team == Team.werewolves || role.id == RolesData.serialKiller.id || role.id == RolesData.wolfSeer.id || role.id == RolesData.assassin.id) {
+      if (role.team == Team.werewolves) {
+        return p.role.team != Team.werewolves; // CANNOT TARGET FELLOW WEREWOLVES!
+      }
+      if (role.id == RolesData.serialKiller.id || role.id == RolesData.assassin.id) {
         return p.id != currentPlayer.id;
       }
       return true;
@@ -1762,6 +1764,46 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
                         ),
                       ),
                       const SizedBox(height: 12),
+
+                      // PACK MEMBERS BANNER FOR ALL WEREWOLF BREEDS!
+                      if (role.team == Team.werewolves) ...[
+                        GlassCard(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: const [
+                                  Text('🐺', style: TextStyle(fontSize: 20)),
+                                  SizedBox(width: 8),
+                                  Text('شركاؤك في قطيع المستذئبين الأحياء:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent, fontSize: 13)),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                children: controller.aliveWerewolves.map((wolf) {
+                                  final isSelf = wolf.id == currentPlayer.id;
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: isSelf ? Colors.red.withValues(alpha: 0.4) : Colors.red.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                                    ),
+                                    child: Text(
+                                      '${wolf.name} (${wolf.role.name} ${wolf.role.icon})${isSelf ? ' - أنت' : ''}',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
 
                       if (role.id == RolesData.seer.id && controller.seerMemory.isNotEmpty) ...[
                         GlassCard(
@@ -1933,7 +1975,7 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
 }
 
 // ============================================================================
-// 9. DISCUSSION & VOTING PAGE (WITH HIGH-SECRECY ROUND RESULTS CARD)
+// 9. DISCUSSION & VOTING PAGE
 // ============================================================================
 class DiscussionAndVotePage extends StatefulWidget {
   const DiscussionAndVotePage({super.key});
@@ -2143,7 +2185,6 @@ class _DiscussionAndVotePageState extends State<DiscussionAndVotePage> {
                 ),
               ),
               const SizedBox(height: 12),
-              // HIGH-SECRECY ROUND RESULTS CARD (ONLY SHOWS WHO DIED OR SAFE ROUND, ZERO ROLE LEAKS!)
               GlassCard(
                 padding: const EdgeInsets.all(12),
                 child: Column(
