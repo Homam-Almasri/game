@@ -286,7 +286,6 @@ class PlayerModel {
   bool isLinkedByCupid;
   bool isMayor;
 
-  // NEW ROLES STATES
   bool isHypnotized;
   bool isReflectProtected;
   bool isKidnapped;
@@ -486,9 +485,6 @@ class RolesData {
     powerLimits: '📊 القدرة: ربط حبيبين اثنتين (2) مرة واحدة في الجولة الأولى.',
   );
 
-  // ==========================================================================
-  // NEW INNOVATIVE ROLES (5 + 4 = 9 NEW ROLES)
-  // ==========================================================================
   static const RoleModel assassin = RoleModel(
     id: 'assassin',
     name: 'السفّاح المقنّع',
@@ -626,7 +622,7 @@ class RolesData {
 }
 
 // ============================================================================
-// 5. GAME STATE CONTROLLER (ENGINE WITH 22 ROLES SUPPORT)
+// 5. GAME STATE CONTROLLER (HIGH-SECRECY MINIMAL LOGGING ENGINE)
 // ============================================================================
 class GameController extends ChangeNotifier {
   List<PlayerModel> _players = [];
@@ -727,7 +723,7 @@ class GameController extends ChangeNotifier {
 
     for (var p in _players) {
       p.resetRoundStates();
-      if (p.isKidnapped) p.isKidnapped = false; // Release kidnapped player after 1 round!
+      if (p.isKidnapped) p.isKidnapped = false;
     }
 
     _activeRoundPlayers = List.from(alivePlayers.where((p) => !p.isKidnapped));
@@ -802,24 +798,28 @@ class GameController extends ChangeNotifier {
     cupidActionDone = true;
   }
 
+  // ==========================================================================
+  // ULTRA-SECRET MINIMAL ROUND RESOLUTION (DOES NOT PROVE OR REVEAL ANY ROLE!)
+  // ==========================================================================
   void resolveRoundActions() {
     _roundEvents.clear();
+    List<PlayerModel> deadVictims = [];
 
-    // 1. Resolve Exorcist Reflection / Doctor Protection / Werewolves Attack
+    // 1. Resolve Werewolves Attacks
     for (var wTarget in wolfTargets) {
       if (wTarget.isReflectProtected) {
         var aliveWolfList = alivePlayers.where((p) => p.role.team == Team.werewolves).toList();
         if (aliveWolfList.isNotEmpty) {
           var wolfToDie = aliveWolfList.first;
           wolfToDie.isAlive = false;
-          _roundEvents.add('✨ ارتدت هجمة المستذئب بفضل المعالج الارتدادي وقتلت المستذئب المهاجم بدلاً من [${wTarget.name}]!');
+          deadVictims.add(wolfToDie);
         }
-      } else if (wTarget.isProtected || wTarget.isHealedByWitch) {
-        _roundEvents.add('🛡️ نجحت حماية الطبيب/علاج الساحرة في إنقاذ [${wTarget.name}] من المستذئب!');
-      } else {
-        wTarget.isAlive = false;
-        _roundEvents.add('🐺 افتُرس اللاعب [${wTarget.name}] على يد المستذئب!');
-        _checkHunterAndCupidAndTwinRevenge(wTarget);
+      } else if (!wTarget.isProtected && !wTarget.isHealedByWitch) {
+        if (!deadVictims.contains(wTarget)) {
+          wTarget.isAlive = false;
+          deadVictims.add(wTarget);
+          _checkHunterAndCupidAndTwinRevenge(wTarget, deadVictims);
+        }
       }
     }
 
@@ -827,42 +827,52 @@ class GameController extends ChangeNotifier {
     if (assassinTarget != null) {
       var assassin = _players.firstWhere((p) => p.role.id == RolesData.assassin.id, orElse: () => _players.first);
       if (assassinTarget!.role.team == Team.werewolves) {
-        assassinTarget!.isAlive = false;
-        _roundEvents.add('🗡️ نجح السفّاح المقنّع في أصابة وتصفية المستذئب [${assassinTarget!.name}]!');
-        _checkHunterAndCupidAndTwinRevenge(assassinTarget!);
+        if (!deadVictims.contains(assassinTarget)) {
+          assassinTarget!.isAlive = false;
+          deadVictims.add(assassinTarget!);
+          _checkHunterAndCupidAndTwinRevenge(assassinTarget!, deadVictims);
+        }
       } else {
-        assassinTarget!.isAlive = false;
-        assassin.isAlive = false;
-        _roundEvents.add('💀 أخطأ السفّاح المقنّع وقتل بريئاً [${assassinTarget!.name}]، فمات السفّاح فوراً حسرةً معه!');
-        _checkHunterAndCupidAndTwinRevenge(assassinTarget!);
-        _checkHunterAndCupidAndTwinRevenge(assassin);
+        if (!deadVictims.contains(assassinTarget)) {
+          assassinTarget!.isAlive = false;
+          deadVictims.add(assassinTarget!);
+          _checkHunterAndCupidAndTwinRevenge(assassinTarget!, deadVictims);
+        }
+        if (!deadVictims.contains(assassin)) {
+          assassin.isAlive = false;
+          deadVictims.add(assassin);
+          _checkHunterAndCupidAndTwinRevenge(assassin, deadVictims);
+        }
       }
     }
 
     // 3. Resolve Serial Killer Attack
     if (serialKillerTarget != null && serialKillerTarget!.isTargetedBySerialKiller) {
-      if (serialKillerTarget!.isProtected || serialKillerTarget!.isHealedByWitch) {
-        _roundEvents.add('🛡️ نجحت حماية الطبيب في إنقاذ [${serialKillerTarget!.name}] من هجوم القاتل المتسلسل!');
-      } else {
-        if (serialKillerTarget!.isAlive) {
+      if (!serialKillerTarget!.isProtected && !serialKillerTarget!.isHealedByWitch) {
+        if (!deadVictims.contains(serialKillerTarget)) {
           serialKillerTarget!.isAlive = false;
-          _roundEvents.add('🔪 تسبب هجوم القاتل المتسلسل بمقتل اللاعب [${serialKillerTarget!.name}]!');
-          _checkHunterAndCupidAndTwinRevenge(serialKillerTarget!);
+          deadVictims.add(serialKillerTarget!);
+          _checkHunterAndCupidAndTwinRevenge(serialKillerTarget!, deadVictims);
         }
       }
     }
 
     // 4. Resolve Witch Poison
     if (witchPoisonTarget != null && witchPoisonTarget!.isTargetedByWitchPoison) {
-      if (witchPoisonTarget!.isAlive) {
+      if (!deadVictims.contains(witchPoisonTarget)) {
         witchPoisonTarget!.isAlive = false;
-        _roundEvents.add('☠️ تسببت جرعة سم الساحرة بمقتل اللاعب [${witchPoisonTarget!.name}]!');
-        _checkHunterAndCupidAndTwinRevenge(witchPoisonTarget!);
+        deadVictims.add(witchPoisonTarget!);
+        _checkHunterAndCupidAndTwinRevenge(witchPoisonTarget!, deadVictims);
       }
     }
 
-    if (_roundEvents.isEmpty) {
-      _roundEvents.add('✨ جولة آمنة ومشرقة! لم يتعرض أي لاعب للأذى.');
+    // STRICT SECRECY LOGGING: DO NOT MENTION WHO PROTECTED WHOM OR WHY NO ONE DIED!
+    if (deadVictims.isEmpty) {
+      _roundEvents.add('✨ استيقظت القرية بشمس مشرقة دون وقوع أي ضحايا هذه الجولة!');
+    } else {
+      for (var victim in deadVictims) {
+        _roundEvents.add('💀 تم العثور على جثة اللاعب [${victim.name}] صباحاً!');
+      }
     }
 
     wolfCubRevengeActive = false;
@@ -870,13 +880,11 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _checkHunterAndCupidAndTwinRevenge(PlayerModel victim) {
-    // Twin Wolf conversion
+  void _checkHunterAndCupidAndTwinRevenge(PlayerModel victim, List<PlayerModel> deadVictims) {
     if (victim.role.id == RolesData.twinWolf.id && victim.twinPartnerId != null) {
       var partner = _players.firstWhere((p) => p.id == victim.twinPartnerId, orElse: () => victim);
       if (partner.id != victim.id && partner.isAlive) {
-        partner.role = RolesData.werewolf; // Secretly convert to Werewolf!
-        _roundEvents.add('👥 تحول اللاعب [${partner.name}] سراً إلى مستذئب ثاراً لمقتل توأمه!');
+        partner.role = RolesData.werewolf;
       }
     }
 
@@ -887,15 +895,21 @@ class GameController extends ChangeNotifier {
       );
       if (partner.id != victim.id && partner.isAlive) {
         partner.isAlive = false;
-        _roundEvents.add('💔 مات اللاعب [${partner.name}] فوراً حزناً على مقتل شريكه العاشق!');
+        if (!deadVictims.contains(partner)) {
+          deadVictims.add(partner);
+        }
       }
     }
   }
 
   void triggerHunterShot(PlayerModel hunter, PlayerModel revengeTarget) {
     revengeTarget.isAlive = false;
-    _roundEvents.add('🏹 أطلق الصياد رصاصة انتقامه وأخذ [${revengeTarget.name}] للموت معه!');
-    _checkHunterAndCupidAndTwinRevenge(revengeTarget);
+    _roundEvents.add('🏹 سُمِع دوي رصاصة في الظلام وأصابت اللاعب [${revengeTarget.name}]!');
+    List<PlayerModel> extraDead = [];
+    _checkHunterAndCupidAndTwinRevenge(revengeTarget, extraDead);
+    for (var p in extraDead) {
+      _roundEvents.add('💀 تم العثور على جثة اللاعب [${p.name}] صباحاً!');
+    }
     checkWinConditions();
     notifyListeners();
   }
@@ -914,10 +928,14 @@ class GameController extends ChangeNotifier {
 
     if (suspect.role.id == RolesData.wolfCub.id) {
       wolfCubRevengeActive = true;
-      _roundEvents.add('🐾 غضب قطيع المستذئبين لمقتل الذئب الصغير! سينتقمون بأخذ ضحيتين الجولة القادمة.');
     }
 
-    _checkHunterAndCupidAndTwinRevenge(suspect);
+    List<PlayerModel> extraDead = [];
+    _checkHunterAndCupidAndTwinRevenge(suspect, extraDead);
+    for (var p in extraDead) {
+      _roundEvents.add('💀 تم العثور على جثة اللاعب [${p.name}] مفارقاً الحياة!');
+    }
+
     _roundCount++;
     checkWinConditions();
     notifyListeners();
@@ -1249,7 +1267,7 @@ class _PlayerSetupPageState extends State<PlayerSetupPage> {
 }
 
 // ============================================================================
-// 7. ROLES GUIDE PAGE (SHOWING ALL 22 ROLES)
+// 7. ROLES GUIDE PAGE
 // ============================================================================
 class RolesGuidePage extends StatefulWidget {
   const RolesGuidePage({super.key});
@@ -1915,7 +1933,7 @@ class _TurnPhasePageState extends State<TurnPhasePage> {
 }
 
 // ============================================================================
-// 9. DISCUSSION & VOTING PAGE (WITH GODFATHER VETO & JUDGE OVERRIDE)
+// 9. DISCUSSION & VOTING PAGE (WITH HIGH-SECRECY ROUND RESULTS CARD)
 // ============================================================================
 class DiscussionAndVotePage extends StatefulWidget {
   const DiscussionAndVotePage({super.key});
@@ -1956,7 +1974,6 @@ class _DiscussionAndVotePageState extends State<DiscussionAndVotePage> {
 
     final suspect = _selectedSuspect!;
 
-    // Godfather Veto Check
     if (suspect.role.id == RolesData.godfather.id && controller.godfatherHasVeto) {
       controller.godfatherHasVeto = false;
       _showGodfatherVetoDialog(context, controller, suspect);
@@ -2122,6 +2139,24 @@ class _DiscussionAndVotePageState extends State<DiscussionAndVotePage> {
                       ],
                     ),
                     Text('$minutes:$seconds', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.amber)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              // HIGH-SECRECY ROUND RESULTS CARD (ONLY SHOWS WHO DIED OR SAFE ROUND, ZERO ROLE LEAKS!)
+              GlassCard(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('نتائج الجولة الماضية 📜', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    ...controller.roundEvents.map(
+                      (e) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(e, style: const TextStyle(fontSize: 13, height: 1.3)),
+                      ),
+                    ),
                   ],
                 ),
               ),
